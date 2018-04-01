@@ -1,0 +1,70 @@
+*.pyc
+*~
+*site_settings.py
+
+# Python Ignore
+*.pyc
+*.zip
+*.rar
+*.via
+*.tmp
+*.err
+*.swp
+*.csv
+.DS_Store
+.svn
+env
+
+# C extensions
+*.so
+
+# Packages
+*.egg
+*.egg-info
+dist
+build
+eggs
+parts
+var
+upload
+product_img
+sku_img
+prop_img
+activity_poster
+activity_video
+activity_video_thumb
+sdist
+develop-eggs
+.installed.cfg
+lib
+lib64
+
+# Installer logs
+pip-log.txt
+
+# Unit test / coverage reports
+.coverage
+.tox
+nosetests.xml
+
+# Translations
+*.mo
+
+# Mr Developer
+.mr.developer.cfg
+.project
+.pydevproject
+
+
+# Others
+*.sqlite3
+
+*.log
+.idea/
+.cache/
+.vscode/
+venv_*/
+ttsdk
+.ipynb_checkpoints/
+.sonarlint/
+.pytest_cache/
