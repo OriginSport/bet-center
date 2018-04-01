@@ -3,8 +3,8 @@ pragma solidity ^0.4.18;
 // import "github.com/oraclize/ethereum-api/oraclizeAPI.sol";
 // import "github.com/Arachnid/solidity-stringutils/strings.sol";
 
-import './lib/usingOraclize.sol';
-import './lib/strings.sol';
+import './utils/usingOraclize.sol';
+import './utils/strings.sol';
 
 contract Bet is usingOraclize {
   using strings for *;
