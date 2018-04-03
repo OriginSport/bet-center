@@ -1,2 +1,3 @@
-# basketball-bet
-This is a decentralized basketball betting platform based on Ethereum.
+# sports-betting-center
+
+This is a decentralized sports betting platform based on Ethereum.
