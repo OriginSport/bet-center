@@ -68,3 +68,6 @@ ttsdk
 .ipynb_checkpoints/
 .sonarlint/
 .pytest_cache/
+
+# truffle
+truffle-config.js
