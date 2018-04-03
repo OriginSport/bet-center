@@ -15,8 +15,8 @@ contract Bet is usingOraclize {
   /** 
     gameId: is a fixed string just like "0021701030"
       the full gameId encode(include football, basketball, esports..) will publish on github
-    awayOdds: need divide 100, if odds is 216 means 2.16
-    homeOdds: need divide 100, if odds is 216 means 2.16
+    leftOdds: need divide 100, if odds is 216 means 2.16
+    rightOdds: need divide 100, if odds is 216 means 2.16
     spread: need add 0.5, if spread is 0 means 0.5
     */
   bytes32 public category;
@@ -24,8 +24,9 @@ contract Bet is usingOraclize {
   uint public deposit;
   uint public minimumBet;
   uint public spread;
-  uint public awayOdds;
-  uint public homeOdds;
+  uint public leftOdds;
+  uint public drawOdds;
+  uint public rightOdds;
 
   struct Player {
     uint betAmount;
@@ -34,12 +35,12 @@ contract Bet is usingOraclize {
 
   uint public totalBetAmount;
   uint public numberOfBet;
-  uint public awayPts;
-  uint public homePts;
-  // 1 means awayTeam win, 2 means homeTeam win
+  uint public leftPts;
+  uint public rightPts;
+  // 1 means leftTeam win, 2 means rightTeam win
   uint public winChoice;
   uint public maxOdds;
-  // flag indicate which team take spread, 1 means awayTeam, 2 means homeTeam
+  // flag indicate which team take spread, 1 means leftTeam, 2 means rightTeam
   uint public flag;
   // winOdds determine the odds of winners
   uint public winOdds;
@@ -50,7 +51,7 @@ contract Bet is usingOraclize {
 
   function() payable public {}
 
-  function setMaxOdds(uint odds1, uint odds2) internal returns (uint) {
+  function setMaxOdds(uint odds1, uint odds2) internal pure returns (uint) {
     if (odds1 > odds2) {
       return odds1;
     } else {
@@ -59,30 +60,33 @@ contract Bet is usingOraclize {
   }
 
   function Bet(bytes32 _category, bytes32 _gameId, uint _deposit, uint _minimumBet, 
-                  uint _spread, uint _awayOdds, uint _homeOdds, uint _flag) payable public {
+                  uint _spread, uint _leftOdds, uint _rightOdds, uint _flag) payable public {
     flag = _flag;
-    setMaxOdds(awayOdds, homeOdds);
+    setMaxOdds(leftOdds, rightOdds);
     category = _category;
     gameId = _gameId;
     deposit = _deposit;
     minimumBet = _minimumBet;
     spread = _spread;
-    awayOdds = _awayOdds;
-    homeOdds = _homeOdds;
+    leftOdds = _leftOdds;
+    rightOdds = _rightOdds;
     
     // oraclize_setCustomGasPrice(4000000000 wei);
     // oraclize_setProof(proofType_TLSNotary | proofStorage_IPFS);
+
+    // Set a delay close function
+    close();
   }
 
-  function getQueryUrl(bytes32 gameId) internal returns (string) {
+  function getQueryUrl(bytes32 _gameId) internal pure returns (string) {
     strings.slice[] memory parts = new strings.slice[](3);
     parts[0] = 'json(http://api.ttnbalite.com/api/nba/game/query/?game_id='.toSlice();
-    parts[1] = gameId.toSliceB32();
+    parts[1] = _gameId.toSliceB32();
     parts[2] = ').data.result'.toSlice();
     return ''.toSlice().join(parts);
   }
 
-  function close() payable {
+  function close() internal {
     if (oraclize_getPrice("URL") > address(this).balance) {
     } else {
       string memory url = getQueryUrl(gameId);
@@ -117,17 +121,17 @@ contract Bet is usingOraclize {
 
     LogGameResult(category, gameId, result);
     var needle = '-'.toSlice();
-    awayPts = parseInt(result.toSlice().copy().split(needle).toString());
-    homePts = parseInt(result.toSlice().copy().rsplit(needle).toString());
+    leftPts = parseInt(result.toSlice().copy().split(needle).toString());
+    rightPts = parseInt(result.toSlice().copy().rsplit(needle).toString());
 
     if (flag == 1) {
-      if (homePts + spread >= awayPts) {
+      if (rightPts + spread >= leftPts) {
         winChoice = 2;
       } else {
         winChoice = 1;
       }
     } else {
-      if (awayPts + spread >= homePts) {
+      if (leftPts + spread >= rightPts) {
         winChoice = 1;
       } else {
         winChoice = 2;
@@ -136,18 +140,15 @@ contract Bet is usingOraclize {
 
     require(winChoice == 1 || winChoice == 2);
     if (winChoice == 1) {
-      winOdds = awayOdds;
+      winOdds = leftOdds;
     } else {
-      winOdds = homeOdds;
+      winOdds = rightOdds;
     }
 
     distributeReward();
   }
 
-  function distributeReward() public {
-    address[100] memory winners;
-    uint count = 0;
-
+  function distributeReward() internal {
     for(uint i = 0; i < players.length; i++) {
       address playerAddress = players[i];
       if(playerInfo[playerAddress].choice == winChoice) {

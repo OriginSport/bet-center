@@ -1,5 +1,5 @@
-const BasketballBetPlatform = artifacts.require('BasketballBetPlatform.sol')
+const BetCenter = artifacts.require('BetCenter.sol')
 
 module.exports = function(deployer) {
-  deployer.deploy(BasketballBetPlatform)
+  deployer.deploy(BetCenter)
 }

@@ -2,7 +2,7 @@ pragma solidity ^0.4.18;
 
 import './Bet.sol';
 
-contract BasketballBetPlatform {
+contract BetCenter {
 
   mapping(bytes32 => Bet[]) public bets;
 
@@ -16,6 +16,10 @@ contract BasketballBetPlatform {
                   spread, awayOdds, homeOdds, _flag);
     bets[category].push(bet);
     LogCreateBet(msg.sender, category);
+  }
+
+  function getBetsByCategory(bytes32 category) constant public returns (Bet[]) {
+    return bets[category];
   }
 }
 
