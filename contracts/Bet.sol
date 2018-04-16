@@ -5,9 +5,11 @@ pragma solidity ^0.4.18;
 
 import './utils/usingOraclize.sol';
 import './utils/strings.sol';
+import './utils/SafeMath.sol';
 
 contract Bet is usingOraclize {
   using strings for *;
+  using SafeMath for uint;
   address public owner;
 
   event LogDistributeReward(address addr, uint reward);
@@ -40,12 +42,12 @@ contract Bet is usingOraclize {
   /**
    * @desc
    * winChoice: Indicate the winner choice of this betting
-   *   1 means leftTeam, 2 means rightTeam, 4 means draw(leftTeam is not always equivalent to the home team)
+   *   1 means leftTeam win, 3 means rightTeam win, 2 means draw(leftTeam is not always equivalent to the home team)
    * flag: Indicate which team take spread
-   *   1 means leftTeam, 2 means rightTeam
+   *   1 means leftTeam, 3 means rightTeam
    * duration: Indicate the time _this game will last
    */
-  uint public totalBetAmount;
+  uint public totalBetAmount = 0;
   uint public leftAmount;
   uint public middleAmount;
   uint public rightAmount;
@@ -54,6 +56,7 @@ contract Bet is usingOraclize {
   uint public rightPts;
   uint public winChoice;
   uint public flag;
+  uint public startTime;
   uint public duration = 3600 * 3;
 
   address [] players;
@@ -62,7 +65,8 @@ contract Bet is usingOraclize {
   function() payable public {}
 
   function Bet(bytes32 _category, bytes32 _gameId, uint _deposit, uint _minimumBet, 
-                  uint _spread, uint _leftOdds, uint _middleOdds, uint _rightOdds, uint _flag) payable public {
+                  uint _spread, uint _leftOdds, uint _middleOdds, uint _rightOdds, uint _flag,
+                  uint _startTime, uint _duration) payable public {
     owner = msg.sender;
 
     flag = _flag;
@@ -74,6 +78,8 @@ contract Bet is usingOraclize {
     leftOdds = _leftOdds;
     middleOdds = _middleOdds;
     rightOdds = _rightOdds;
+    startTime = _startTime;
+    duration = _duration;
 
     // oraclize_setCustomGasPrice(4000000000 wei);
     // oraclize_setProof(proofType_TLSNotary | proofStorage_IPFS);
@@ -90,6 +96,7 @@ contract Bet is usingOraclize {
     return ''.toSlice().join(parts);
   }
 
+  // Need modify to internal
   function close() public {
     if (oraclize_getPrice("URL") > address(this).balance) {
       refund();
@@ -100,47 +107,73 @@ contract Bet is usingOraclize {
     }
   }
 
+  // set default gasPrice is 5000000000
+  function getRefundTxFee() view public returns (uint) {
+    return numberOfBet.mul(5000000000 * 21000);
+  }
+
   function checkPlayerExists(address player) view public returns (bool) {
-    if (playerInfo[player].choice > 0) {
-      return true;
+    if (playerInfo[player].choice == 0) {
+      return false;
     }
-    return false;
+    return true;
   }
 
   function isSolvent(uint choice, uint amount) view internal returns (bool) {
     uint needAmount;
     if (choice == 1) {
-      needAmount = leftOdds * (leftAmount + amount) / 100;
+      needAmount = leftOdds.mul(leftAmount.add(amount)).div(100);
     } else if (choice == 2) {
-      needAmount = middleOdds * (middleAmount + amount) / 100;
+      needAmount = middleOdds.mul(middleAmount.add(amount)).div(100);
     } else {
-      needAmount = rightOdds * (rightAmount + amount) / 100;
+      needAmount = rightOdds.mul(rightAmount.add(amount)).div(100);
     }
 
-    if (needAmount > totalBetAmount + amount + deposit) {
-      return true;
-    } else {
+    if (needAmount.add(getRefundTxFee()) > totalBetAmount.add(amount).add(deposit)) {
       return false;
+    } else {
+      return true;
+    }
+  }
+
+  function updateAmountOfEachChoice(uint choice, uint amount) internal {
+    if (choice == 1) {
+      leftAmount == leftAmount.add(amount);
+    } else if (choice == 2) {
+      middleAmount = middleAmount.add(amount);
+    } else {
+      rightAmount = rightAmount.add(amount);
     }
   }
 
   function placeBet(uint choice) public payable {
     require(choice == 1 ||  choice == 2 || choice == 3);
     require(msg.value >= minimumBet);
+    require(!checkPlayerExists(msg.sender));
 
     if (!isSolvent(choice, msg.value)) {
       revert();
     }
 
-    playerInfo[msg.sender].betAmount += msg.value;
+    playerInfo[msg.sender].betAmount = msg.value;
     playerInfo[msg.sender].choice = choice;
 
-    totalBetAmount += msg.value;
-    numberOfBet += 1;
+    totalBetAmount = totalBetAmount.add(msg.value);
+    numberOfBet = numberOfBet.add(1);
+    updateAmountOfEachChoice(choice, msg.value);
     LogPlayerChoice(msg.sender, choice);
   }
 
-  function __callback(bytes32 myid, string result) public {
+  function rechargeDeposit() public payable {
+    require(msg.value >= minimumBet);
+    deposit = deposit.add(msg.value);
+  }
+
+  /**
+   * result: will be like 117-103(left team is away team) or 1-3(left team is home team)
+   * comment out `myid` to avoid 'unused parameter' warning
+   */
+  function __callback(bytes32 /*myid*/, string result) public {
     require(msg.sender == oraclize_cbAddress());
     require(flag == 1 || flag == 2);
 
@@ -171,7 +204,7 @@ contract Bet is usingOraclize {
     }
   }
 
-  function refund() {
+  function refund() public {
     for(uint i = 0; i < players.length; i++) {
       address playerAddress = players[i];
       playerAddress.transfer(playerInfo[playerAddress].betAmount);
