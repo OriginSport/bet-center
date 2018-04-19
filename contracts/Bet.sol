@@ -89,6 +89,10 @@ contract Bet is usingOraclize {
     // close();
   }
 
+  /**
+   * @dev compose a url can get the result of game
+   * @param _gameId The unique identity of a game
+   */
   function getQueryUrl(bytes32 _gameId) internal pure returns (string) {
     strings.slice[] memory parts = new strings.slice[](3);
     parts[0] = 'json(http://api.ttnbalite.com/api/nba/game/query/?game_id='.toSlice();
@@ -97,7 +101,10 @@ contract Bet is usingOraclize {
     return ''.toSlice().join(parts);
   }
 
-  // Need modify to internal
+  /**
+   * @dev close this bet
+   * @note need modify to internal
+   */
   function close() public {
     if (oraclize_getPrice("URL") > address(this).balance) {
       refund();
@@ -108,11 +115,18 @@ contract Bet is usingOraclize {
     }
   }
 
-  // set default gasPrice is 5000000000
+  /**
+   * @dev calculate the gas whichdistribute rewards will cost
+   * set default gasPrice is 5000000000
+   */
   function getRefundTxFee() view public returns (uint) {
     return numberOfBet.mul(5000000000 * 21000);
   }
 
+  /**
+   * @dev find a player has participanted or not
+   * @param player the address of the participant
+   */
   function checkPlayerExists(address player) view public returns (bool) {
     if (playerInfo[player].choice == 0) {
       return false;
@@ -120,6 +134,11 @@ contract Bet is usingOraclize {
     return true;
   }
 
+  /**
+   * @dev to check the dealer is solvent or not
+   * @param choice indicate which team user choose
+   * @param amount indicate how many ether user bet
+   */
   function isSolvent(uint choice, uint amount) view internal returns (bool) {
     uint needAmount;
     if (choice == 1) {
@@ -137,6 +156,11 @@ contract Bet is usingOraclize {
     }
   }
 
+  /**
+   * @dev update this bet some state
+   * @param choice indicate which team user choose
+   * @param amount indicate how many ether user bet
+   */
   function updateAmountOfEachChoice(uint choice, uint amount) internal {
     if (choice == 1) {
       leftAmount == leftAmount.add(amount);
@@ -147,6 +171,10 @@ contract Bet is usingOraclize {
     }
   }
 
+  /**
+   * @dev place a bet with his/her choice
+   * @param choice indicate which team user choose
+   */
   function placeBet(uint choice) public payable {
     require(now > startTime);
     require(choice == 1 ||  choice == 2 || choice == 3);
@@ -166,14 +194,19 @@ contract Bet is usingOraclize {
     LogPlayerChoice(msg.sender, choice);
   }
 
+  /**
+   * @dev in order to let more people participant, dealer can recharge
+   *
+   */
   function rechargeDeposit() public payable {
     require(msg.value >= minimumBet);
     deposit = deposit.add(msg.value);
   }
 
   /**
-   * result: will be like 117-103(left team is away team) or 1-3(left team is home team)
-   * comment out `myid` to avoid 'unused parameter' warning
+   * @dev oraclize will call this function with result
+   * @param result: will be like 117-103(left team is away team) or 1-3(left team is home team)
+   * @note comment out `myid` to avoid 'unused parameter' warning
    */
   function __callback(bytes32 /*myid*/, string result) public {
     require(msg.sender == oraclize_cbAddress());
