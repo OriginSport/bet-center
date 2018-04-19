@@ -19,7 +19,7 @@ contract BetCenter {
     LogCreateBet(msg.sender, bet, category);
   }
 
-  function getBetsByCategory(bytes32 category) constant public returns (Bet[]) {
+  function getBetsByCategory(bytes32 category) view public returns (Bet[]) {
     return bets[category];
   }
 }
