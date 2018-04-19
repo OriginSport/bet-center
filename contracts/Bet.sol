@@ -103,7 +103,7 @@ contract Bet is usingOraclize {
 
   /**
    * @dev close this bet
-   * @note need modify to internal
+   * @notice need modify to internal
    */
   function close() public {
     if (oraclize_getPrice("URL") > address(this).balance) {
@@ -205,8 +205,8 @@ contract Bet is usingOraclize {
 
   /**
    * @dev oraclize will call this function with result
-   * @param result: will be like 117-103(left team is away team) or 1-3(left team is home team)
-   * @note comment out `myid` to avoid 'unused parameter' warning
+   * @param result will be like 117-103(left team is away team) or 1-3(left team is home team)
+   * @notice comment out `myid` to avoid 'unused parameter' warning
    */
   function __callback(bytes32 /*myid*/, string result) public {
     require(msg.sender == oraclize_cbAddress());
