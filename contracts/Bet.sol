@@ -67,6 +67,7 @@ contract Bet is usingOraclize {
   function Bet(bytes32 _category, bytes32 _gameId, uint _deposit, uint _minimumBet, 
                   uint _spread, uint _leftOdds, uint _middleOdds, uint _rightOdds, uint _flag,
                   uint _startTime, uint _duration) payable public {
+    //require(_startTime > now);
     owner = msg.sender;
 
     flag = _flag;
@@ -147,6 +148,7 @@ contract Bet is usingOraclize {
   }
 
   function placeBet(uint choice) public payable {
+    require(now > startTime);
     require(choice == 1 ||  choice == 2 || choice == 3);
     require(msg.value >= minimumBet);
     require(!checkPlayerExists(msg.sender));
