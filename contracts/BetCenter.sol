@@ -6,17 +6,17 @@ contract BetCenter {
 
   mapping(bytes32 => Bet[]) public bets;
 
-  event LogCreateBet(address indexed dealerAddr, address betAddr, bytes32 category);
+  event LogCreateBet(address indexed dealerAddr, address betAddr, bytes32 indexed category, uint indexed startTime);
 
   function() payable public {}
 
-  function createBet(bytes32 category, bytes32 gameId, uint deposit, uint minimumBet, 
-                  uint spread, uint leftOdds, uint middleOdds, uint rightOdds, uint _flag,
+  function createBet(bytes32 category, bytes32 gameId, uint minimumBet, 
+                  uint spread, uint leftOdds, uint middleOdds, uint rightOdds, uint flag,
                   uint startTime, uint duration) payable public {
-    Bet bet = new Bet(category, gameId, deposit, minimumBet, 
-                  spread, leftOdds, middleOdds, rightOdds , _flag, startTime, duration);
+    Bet bet = (new Bet).value(msg.value)(msg.sender, category, gameId, minimumBet, 
+                  spread, leftOdds, middleOdds, rightOdds , flag, startTime, duration);
     bets[category].push(bet);
-    LogCreateBet(msg.sender, bet, category);
+    LogCreateBet(msg.sender, bet, category, startTime);
   }
 
   /**
