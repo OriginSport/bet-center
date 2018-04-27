@@ -14,7 +14,7 @@ contract Bet is usingOraclize {
 
   event LogDistributeReward(address addr, uint reward);
   event LogGameResult(bytes32 indexed category, bytes32 indexed gameId, string result);
-  event LogPlayerChoice(address addr, uint choice);
+  event LogParticipant(address addr, uint choice, uint betAmount);
 
   /** 
    * @desc
@@ -27,7 +27,6 @@ contract Bet is usingOraclize {
    */
   bytes32 public category;
   bytes32 public gameId;
-  uint public deposit;
   uint public minimumBet;
   uint public spread;
   uint public leftOdds;
@@ -47,6 +46,8 @@ contract Bet is usingOraclize {
    *   1 means leftTeam, 3 means rightTeam
    * duration: Indicate the time _this game will last
    */
+  address public dealer;
+  uint public deposit = 0;
   uint public totalBetAmount = 0;
   uint public leftAmount;
   uint public middleAmount;
@@ -64,16 +65,17 @@ contract Bet is usingOraclize {
 
   function() payable public {}
 
-  function Bet(bytes32 _category, bytes32 _gameId, uint _deposit, uint _minimumBet, 
+  function Bet(address _dealer, bytes32 _category, bytes32 _gameId, uint _minimumBet, 
                   uint _spread, uint _leftOdds, uint _middleOdds, uint _rightOdds, uint _flag,
                   uint _startTime, uint _duration) payable public {
-    //require(_startTime > now);
+    require(_startTime > now);
+    require(msg.value >= 0.1 ether);
     owner = msg.sender;
-
+    dealer = _dealer;
+    deposit = msg.value;
     flag = _flag;
     category = _category;
     gameId = _gameId;
-    deposit = _deposit;
     minimumBet = _minimumBet;
     spread = _spread;
     leftOdds = _leftOdds;
@@ -176,7 +178,7 @@ contract Bet is usingOraclize {
    * @param choice indicate which team user choose
    */
   function placeBet(uint choice) public payable {
-    require(now > startTime);
+    require(now < startTime);
     require(choice == 1 ||  choice == 2 || choice == 3);
     require(msg.value >= minimumBet);
     require(!checkPlayerExists(msg.sender));
@@ -191,7 +193,7 @@ contract Bet is usingOraclize {
     totalBetAmount = totalBetAmount.add(msg.value);
     numberOfBet = numberOfBet.add(1);
     updateAmountOfEachChoice(choice, msg.value);
-    LogPlayerChoice(msg.sender, choice);
+    LogParticipant(msg.sender, choice, msg.value);
   }
 
   /**
