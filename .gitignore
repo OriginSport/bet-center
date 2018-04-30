@@ -1,6 +1,7 @@
 *.pyc
 *~
 *site_settings.py
+node_modules
 
 # Python Ignore
 *.pyc
