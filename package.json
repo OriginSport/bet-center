@@ -1,0 +1,25 @@
+{
+  "name": "bet-center",
+  "version": "1.0.0",
+  "description": "This is a decentralized sports betting platform based on Ethereum.",
+  "main": "truffle-config.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/OriginSport/bet-center.git"
+  },
+  "author": "Xat_MassacrE",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/OriginSport/bet-center/issues"
+  },
+  "homepage": "https://github.com/OriginSport/bet-center#readme",
+  "devDependencies": {
+    "truffle-js-test-helper": "^1.0.1"
+  }
+}
