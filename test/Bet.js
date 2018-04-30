@@ -1,7 +1,7 @@
 var Bet = artifacts.require('./Bet.sol')
 var BetCenter = artifacts.require('./BetCenter.sol')
 var web3 = require('web3')
-const { addsDayOnEVM, assertRevert } = require('./helpers')
+const { addDaysOnEVM, assertRevert } = require('truffle-js-test-helper')
 
 // return web3.utils.fromAscii(str)
 // return web3.utils.hexToAscii(bytes32)
