@@ -23,12 +23,14 @@ contract Bet is usingOraclize {
    * leftOdds: need divide 100, if odds is 216 means 2.16
    * middleOdds: need divide 100, if odds is 175 means 1.75
    * rightOdds: need divide 100, if odds is 250 means 2.50
-   * spread: need add 0.5, if spread is 0 means 0.5
+   * spread: need sub 0.5, if spread is 1 means 0.5, 0 means no spread
+   * flag: indicate which team get spread, 1 means leftTeam, 3 means rightTeam
    */
   bytes32 public category;
   bytes32 public gameId;
   uint public minimumBet;
   uint public spread;
+  uint public flag;
   uint public leftOdds;
   uint public middleOdds;
   uint public rightOdds;
@@ -56,7 +58,6 @@ contract Bet is usingOraclize {
   uint public leftPts;
   uint public rightPts;
   uint public winChoice;
-  uint public flag;
   uint public startTime;
   uint public duration = 3600 * 3;
 
@@ -68,6 +69,7 @@ contract Bet is usingOraclize {
   function Bet(address _dealer, bytes32 _category, bytes32 _gameId, uint _minimumBet, 
                   uint _spread, uint _leftOdds, uint _middleOdds, uint _rightOdds, uint _flag,
                   uint _startTime, uint _duration) payable public {
+    require(_flag == 1 || _flag == 3);
     require(_startTime > now);
     require(msg.value >= 0.1 ether);
     owner = msg.sender;
@@ -205,6 +207,34 @@ contract Bet is usingOraclize {
     deposit = deposit.add(msg.value);
   }
 
+  function getWinChoice(uint _leftPts, uint _rightPts) view public returns (uint) {
+    uint _winChoice;
+    if (spread == 0) {
+      if (_leftPts > _rightPts) {
+        _winChoice = 1;
+      } else if (_leftPts == _rightPts) {
+        _winChoice = 2;
+      } else {
+        _winChoice = 3;
+      }
+    } else {
+      if (flag == 1) {
+        if (_leftPts + spread > _rightPts) {
+          _winChoice = 1;
+        } else {
+          _winChoice = 3;
+        }
+      } else {
+        if (_rightPts + spread > _leftPts) {
+          _winChoice = 3;
+        } else {
+          _winChoice = 1;
+        }
+      }
+    }
+    return _winChoice;
+  }
+
   /**
    * @dev oraclize will call this function with result
    * @param result will be like 117-103(left team is away team) or 1-3(left team is home team)
@@ -212,30 +242,18 @@ contract Bet is usingOraclize {
    */
   function __callback(bytes32 /*myid*/, string result) public {
     require(msg.sender == oraclize_cbAddress());
-    require(flag == 1 || flag == 2);
-
     LogGameResult(category, gameId, result);
+
     var needle = '-'.toSlice();
     leftPts = parseInt(result.toSlice().copy().split(needle).toString());
     rightPts = parseInt(result.toSlice().copy().rsplit(needle).toString());
 
-    if (flag == 1) {
-      if (rightPts + spread >= leftPts) {
-        winChoice = 2;
-      } else {
-        winChoice = 1;
-      }
-    } else {
-      if (leftPts + spread >= rightPts) {
-        winChoice = 1;
-      } else {
-        winChoice = 2;
-      }
-    }
-
-    require(winChoice == 1 || winChoice == 2);
+    winChoice = getWinChoice(leftPts, rightPts);
+    require(winChoice == 1 || winChoice == 2 || winChoice == 3);
     if (winChoice == 1) {
       distributeReward(leftOdds);
+    } else if (winChoice == 2) {
+      distributeReward(middleOdds);
     } else {
       distributeReward(rightOdds);
     }
@@ -265,9 +283,8 @@ contract Bet is usingOraclize {
       if(playerInfo[playerAddress].choice == winChoice) {
         // Distribute ether to winners
         playerAddress.transfer(winOdds * playerInfo[playerAddress].betAmount / 100);
+        LogDistributeReward(playerAddress, winOdds * playerInfo[playerAddress].betAmount / 100);
       }
-      delete playerInfo[playerAddress];
     }
-    players.length = 0;
   }
 }
