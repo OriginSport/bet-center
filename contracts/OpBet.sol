@@ -83,7 +83,7 @@ contract OpBet {
    * @dev calculate the gas whichdistribute rewards will cost
    * set default gasPrice is 5000000000
    */
-  function getRefundTxFee() view public returns (uint) {
+  function getRefundTxFee() public view returns (uint) {
     return numberOfBet.mul(5000000000 * 21000);
   }
 
@@ -91,7 +91,7 @@ contract OpBet {
    * @dev find a player has participanted or not
    * @param player the address of the participant
    */
-  function checkPlayerExists(address player) view public returns (bool) {
+  function checkPlayerExists(address player) public view returns (bool) {
     if (playerInfo[player].choice == 0) {
       return false;
     }
@@ -103,7 +103,7 @@ contract OpBet {
    * @param choice indicate which team user choose
    * @param amount indicate how many ether user bet
    */
-  function isSolvent(uint choice, uint amount) view internal returns (bool) {
+  function isSolvent(uint choice, uint amount) internal view returns (bool) {
     uint needAmount;
     if (choice == 1) {
       needAmount = leftOdds.mul(leftAmount.add(amount)).div(100);
@@ -167,7 +167,7 @@ contract OpBet {
     deposit = deposit.add(msg.value);
   }
 
-  function getWinChoice(uint _leftPts, uint _rightPts) view public returns (uint) {
+  function getWinChoice(uint _leftPts, uint _rightPts) public view returns (uint) {
     uint _winChoice;
     if (spread == 0) {
       if (_leftPts > _rightPts) {
