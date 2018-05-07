@@ -1,6 +1,6 @@
 pragma solidity 0.4.19;
 
-import './utils/SafeMath.sol';
+import 'zeppelin-solidity/contracts/math/SafeMath.sol';
 
 contract OpBet {
   using SafeMath for uint;
@@ -39,7 +39,6 @@ contract OpBet {
    *   1 means leftTeam win, 3 means rightTeam win, 2 means draw(leftTeam is not always equivalent to the home team)
    * flag: Indicate which team take spread
    *   1 means leftTeam, 3 means rightTeam
-   * duration: Indicate the time _this game will last
    */
   address public dealer;
   uint public deposit = 0;
@@ -52,7 +51,6 @@ contract OpBet {
   uint public rightPts;
   uint public winChoice;
   uint public startTime;
-  uint public duration = 3600 * 3;
 
   address [] players;
   mapping(address => Player) public playerInfo;
@@ -61,7 +59,7 @@ contract OpBet {
 
   function OpBet(address _dealer, bytes32 _category, bytes32 _gameId, uint _minimumBet, 
                   uint _spread, uint _leftOdds, uint _middleOdds, uint _rightOdds, uint _flag,
-                  uint _startTime, uint _duration) payable public {
+                  uint _startTime) payable public {
     require(_flag == 1 || _flag == 3);
     require(_startTime > now);
     require(msg.value >= 0.1 ether);
@@ -76,7 +74,6 @@ contract OpBet {
     middleOdds = _middleOdds;
     rightOdds = _rightOdds;
     startTime = _startTime;
-    duration = _duration;
   }
 
   /**
@@ -219,6 +216,10 @@ contract OpBet {
     }
   }
 
+  /**
+   * @dev if there are some reasons lead game postpone or cancel
+   *      the bet will also cancel and refund every bet
+   */
   function refund() public {
     for(uint i = 0; i < players.length; i++) {
       address playerAddress = players[i];
@@ -226,6 +227,9 @@ contract OpBet {
     }
   }
 
+  /**
+   * @dev distribute ether to every winner as they choosed odds
+   */
   function distributeReward(uint winOdds) internal {
     for(uint i = 0; i < players.length; i++) {
       address playerAddress = players[i];
