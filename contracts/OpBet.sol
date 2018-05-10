@@ -1,8 +1,10 @@
 pragma solidity 0.4.19;
 
 import 'zeppelin-solidity/contracts/math/SafeMath.sol';
+import './utils/DataCenterBridge.sol';
 
-contract OpBet {
+
+contract OpBet is DataCenterBridge {
   using SafeMath for uint;
 
   event LogDistributeReward(address addr, uint reward);
@@ -193,17 +195,17 @@ contract OpBet {
   }
 
   /**
-   * @dev closeBet called by owner
-   * @param _leftPts result will be like 117-103(leftPts is 117)
-   * @param _rightPts result will be like 117-103(rightPts is 103)
+   * @dev closeBet could be called by everyone, but owner/dealer should to this.
    */
-  function closeBet(uint _leftPts, uint _rightPts) external {
+  function closeBet() external {
     require(flag == 1 || flag == 3);
 
-    LogGameResult(category, gameId, leftPts, rightPts);
+    uint confirmations;
+    (leftPts, rightPts, confirmations) = dataCenterGetResult(gameId);
 
-    leftPts = _leftPts;
-    rightPts = _rightPts;
+    require(confirmations > 12);
+
+    LogGameResult(category, gameId, leftPts, rightPts);
 
     winChoice = getWinChoice(leftPts, rightPts);
     require(winChoice == 1 || winChoice == 2 || winChoice == 3);
