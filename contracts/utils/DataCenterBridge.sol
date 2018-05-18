@@ -3,9 +3,11 @@ pragma solidity ^0.4.19;
 contract DataCenterInterface {
   function getResult(bytes32 gameId) view public returns (uint16, uint16, uint8);
 }
+
 contract DataCenterAddrResolverInterface {
   function getAddress() public returns (address _addr);
 }
+
 contract DataCenterBridge {
   uint8 constant networkID_auto = 0;
   uint8 constant networkID_mainnet = 1;
