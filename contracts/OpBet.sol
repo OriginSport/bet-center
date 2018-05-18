@@ -43,6 +43,8 @@ contract OpBet is DataCenterBridge {
    *   1 means leftTeam, 3 means rightTeam
    */
   address public dealer;
+  uint public confirmations = 0;
+  uint public neededConfirmations = 1;
   uint public deposit = 0;
   uint public totalBetAmount = 0;
   uint public leftAmount;
@@ -61,10 +63,11 @@ contract OpBet is DataCenterBridge {
 
   function OpBet(address _dealer, bytes32 _category, bytes32 _gameId, uint _minimumBet, 
                   uint _spread, uint _leftOdds, uint _middleOdds, uint _rightOdds, uint _flag,
-                  uint _startTime) payable public {
+                  uint _startTime, uint _neededConfirmations) payable public {
     require(_flag == 1 || _flag == 3);
     require(_startTime > now);
     require(msg.value >= 0.1 ether);
+    require(_neededConfirmations >= neededConfirmations);
     dealer = _dealer;
     deposit = msg.value;
     flag = _flag;
@@ -76,6 +79,7 @@ contract OpBet is DataCenterBridge {
     middleOdds = _middleOdds;
     rightOdds = _rightOdds;
     startTime = _startTime;
+    neededConfirmations = _neededConfirmations;
   }
 
   /**
@@ -200,10 +204,9 @@ contract OpBet is DataCenterBridge {
   function closeBet() external {
     require(flag == 1 || flag == 3);
 
-    uint confirmations;
     (leftPts, rightPts, confirmations) = dataCenterGetResult(gameId);
 
-    require(confirmations > 12);
+    require(confirmations > neededConfirmations);
 
     LogGameResult(category, gameId, leftPts, rightPts);
 
