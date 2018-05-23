@@ -43,7 +43,9 @@ contract OpBet is DataCenterBridge {
    *   1 means leftTeam, 3 means rightTeam
    */
   address public dealer;
-  uint public confirmations = 0;
+  uint16 public leftPts;
+  uint16 public rightPts;
+  uint8 public confirmations = 0;
   uint public neededConfirmations = 1;
   uint public deposit = 0;
   uint public totalBetAmount = 0;
@@ -51,8 +53,6 @@ contract OpBet is DataCenterBridge {
   uint public middleAmount;
   uint public rightAmount;
   uint public numberOfBet;
-  uint public leftPts;
-  uint public rightPts;
   uint public winChoice;
   uint public startTime;
 
@@ -206,7 +206,7 @@ contract OpBet is DataCenterBridge {
 
     (leftPts, rightPts, confirmations) = dataCenterGetResult(gameId);
 
-    require(confirmations > neededConfirmations);
+    require(confirmations >= neededConfirmations);
 
     LogGameResult(category, gameId, leftPts, rightPts);
 
