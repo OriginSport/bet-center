@@ -1,19 +1,14 @@
-pragma solidity ^0.4.18;
+pragma solidity 0.4.19;
 
-// import "github.com/oraclize/ethereum-api/oraclizeAPI.sol";
-// import "github.com/Arachnid/solidity-stringutils/strings.sol";
+import 'zeppelin-solidity/contracts/math/SafeMath.sol';
+import './utils/DataCenterBridge.sol';
 
-import './utils/usingOraclize.sol';
-import './utils/strings.sol';
-import './utils/SafeMath.sol';
 
-contract Bet is usingOraclize {
-  using strings for *;
+contract Bet is DataCenterBridge {
   using SafeMath for uint;
-  address public owner;
 
   event LogDistributeReward(address addr, uint reward);
-  event LogGameResult(bytes32 indexed category, bytes32 indexed gameId, string result);
+  event LogGameResult(bytes32 indexed category, bytes32 indexed gameId, uint leftPts, uint rightPts);
   event LogParticipant(address addr, uint choice, uint betAmount);
 
   /** 
@@ -46,20 +41,20 @@ contract Bet is usingOraclize {
    *   1 means leftTeam win, 3 means rightTeam win, 2 means draw(leftTeam is not always equivalent to the home team)
    * flag: Indicate which team take spread
    *   1 means leftTeam, 3 means rightTeam
-   * duration: Indicate the time _this game will last
    */
   address public dealer;
+  uint16 public leftPts;
+  uint16 public rightPts;
+  uint8 public confirmations = 0;
+  uint public neededConfirmations = 1;
   uint public deposit = 0;
   uint public totalBetAmount = 0;
   uint public leftAmount;
   uint public middleAmount;
   uint public rightAmount;
   uint public numberOfBet;
-  uint public leftPts;
-  uint public rightPts;
   uint public winChoice;
   uint public startTime;
-  uint public duration = 3600 * 3;
 
   address [] players;
   mapping(address => Player) public playerInfo;
@@ -68,11 +63,11 @@ contract Bet is usingOraclize {
 
   function Bet(address _dealer, bytes32 _category, bytes32 _gameId, uint _minimumBet, 
                   uint _spread, uint _leftOdds, uint _middleOdds, uint _rightOdds, uint _flag,
-                  uint _startTime, uint _duration) payable public {
+                  uint _startTime, uint _neededConfirmations) payable public {
     require(_flag == 1 || _flag == 3);
     require(_startTime > now);
     require(msg.value >= 0.1 ether);
-    owner = msg.sender;
+    require(_neededConfirmations >= neededConfirmations);
     dealer = _dealer;
     deposit = msg.value;
     flag = _flag;
@@ -84,39 +79,7 @@ contract Bet is usingOraclize {
     middleOdds = _middleOdds;
     rightOdds = _rightOdds;
     startTime = _startTime;
-    duration = _duration;
-
-    // oraclize_setCustomGasPrice(4000000000 wei);
-    // oraclize_setProof(proofType_TLSNotary | proofStorage_IPFS);
-
-    // Set a delay close function
-    // close();
-  }
-
-  /**
-   * @dev compose a url can get the result of game
-   * @param _gameId The unique identity of a game
-   */
-  function getQueryUrl(bytes32 _gameId) internal pure returns (string) {
-    strings.slice[] memory parts = new strings.slice[](3);
-    parts[0] = 'json(http://api.ttnbalite.com/api/nba/game/query/?game_id='.toSlice();
-    parts[1] = _gameId.toSliceB32();
-    parts[2] = ').data.result'.toSlice();
-    return ''.toSlice().join(parts);
-  }
-
-  /**
-   * @dev close this bet
-   * @notice need modify to internal
-   */
-  function close() public {
-    if (oraclize_getPrice("URL") > address(this).balance) {
-      refund();
-    } else {
-      string memory url = getQueryUrl(gameId);
-      // oraclize_query(duration, "URL", url);
-      oraclize_query(0, "URL", url);
-    }
+    neededConfirmations = _neededConfirmations;
   }
 
   /**
@@ -236,17 +199,16 @@ contract Bet is usingOraclize {
   }
 
   /**
-   * @dev oraclize will call this function with result
-   * @param result will be like 117-103(left team is away team) or 1-3(left team is home team)
-   * @notice comment out `myid` to avoid 'unused parameter' warning
+   * @dev closeBet could be called by everyone, but owner/dealer should to this.
    */
-  function __callback(bytes32 /*myid*/, string result) public {
-    require(msg.sender == oraclize_cbAddress());
-    LogGameResult(category, gameId, result);
+  function closeBet() external {
+    require(flag == 1 || flag == 3);
 
-    var needle = '-'.toSlice();
-    leftPts = parseInt(result.toSlice().copy().split(needle).toString());
-    rightPts = parseInt(result.toSlice().copy().rsplit(needle).toString());
+    (leftPts, rightPts, confirmations) = dataCenterGetResult(gameId);
+
+    require(confirmations >= neededConfirmations);
+
+    LogGameResult(category, gameId, leftPts, rightPts);
 
     winChoice = getWinChoice(leftPts, rightPts);
     require(winChoice == 1 || winChoice == 2 || winChoice == 3);
@@ -259,6 +221,10 @@ contract Bet is usingOraclize {
     }
   }
 
+  /**
+   * @dev if there are some reasons lead game postpone or cancel
+   *      the bet will also cancel and refund every bet
+   */
   function refund() public {
     for(uint i = 0; i < players.length; i++) {
       address playerAddress = players[i];
@@ -266,17 +232,9 @@ contract Bet is usingOraclize {
     }
   }
 
-  function testDistribute(uint winOdds) public {
-    for(uint i = 0; i < players.length; i++) {
-      address playerAddress = players[i];
-      if(playerInfo[playerAddress].choice == winChoice) {
-        // Distribute ether to winners
-        LogDistributeReward(playerAddress, winOdds * playerInfo[playerAddress].betAmount / 100);
-        playerAddress.transfer(winOdds * playerInfo[playerAddress].betAmount / 100);
-      }
-    }
-  }
-
+  /**
+   * @dev distribute ether to every winner as they choosed odds
+   */
   function distributeReward(uint winOdds) internal {
     for(uint i = 0; i < players.length; i++) {
       address playerAddress = players[i];
