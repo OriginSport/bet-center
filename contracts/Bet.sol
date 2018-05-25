@@ -1,10 +1,11 @@
 pragma solidity 0.4.19;
 
 import 'zeppelin-solidity/contracts/math/SafeMath.sol';
+import 'zeppelin-solidity/contracts/ownership/Ownable.sol';
 import './utils/DataCenterBridge.sol';
 
 
-contract Bet is DataCenterBridge {
+contract Bet is Ownable, DataCenterBridge {
   using SafeMath for uint;
 
   event LogDistributeReward(address addr, uint reward);
@@ -63,7 +64,7 @@ contract Bet is DataCenterBridge {
 
   function Bet(address _dealer, bytes32 _category, bytes32 _gameId, uint _minimumBet, 
                   uint _spread, uint _leftOdds, uint _middleOdds, uint _rightOdds, uint _flag,
-                  uint _startTime, uint _neededConfirmations) payable public {
+                  uint _startTime, uint _neededConfirmations, address _owner) payable public {
     require(_flag == 1 || _flag == 3);
     require(_startTime > now);
     require(msg.value >= 0.1 ether);
@@ -80,6 +81,7 @@ contract Bet is DataCenterBridge {
     rightOdds = _rightOdds;
     startTime = _startTime;
     neededConfirmations = _neededConfirmations;
+    owner = _owner;
   }
 
   /**
@@ -163,7 +165,6 @@ contract Bet is DataCenterBridge {
 
   /**
    * @dev in order to let more people participant, dealer can recharge
-   *
    */
   function rechargeDeposit() public payable {
     require(msg.value >= minimumBet);
@@ -199,11 +200,31 @@ contract Bet is DataCenterBridge {
   }
 
   /**
+   * @dev manualCloseBet could only be called by owner
+   */
+  function manualCloseBet(uint16 _leftPts, uint16 _rightPts) onlyOwner external {
+    leftPts = _leftPts;
+    rightPts = _rightPts;
+
+    LogGameResult(category, gameId, leftPts, rightPts);
+
+    winChoice = getWinChoice(leftPts, rightPts);
+
+    require(winChoice == 1 || winChoice == 2 || winChoice == 3);
+
+    if (winChoice == 1) {
+      distributeReward(leftOdds);
+    } else if (winChoice == 2) {
+      distributeReward(middleOdds);
+    } else {
+      distributeReward(rightOdds);
+    }
+  }
+
+  /**
    * @dev closeBet could be called by everyone, but owner/dealer should to this.
    */
   function closeBet() external {
-    require(flag == 1 || flag == 3);
-
     (leftPts, rightPts, confirmations) = dataCenterGetResult(gameId);
 
     require(confirmations >= neededConfirmations);
@@ -211,7 +232,7 @@ contract Bet is DataCenterBridge {
     LogGameResult(category, gameId, leftPts, rightPts);
 
     winChoice = getWinChoice(leftPts, rightPts);
-    require(winChoice == 1 || winChoice == 2 || winChoice == 3);
+
     if (winChoice == 1) {
       distributeReward(leftOdds);
     } else if (winChoice == 2) {
