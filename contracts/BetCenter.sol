@@ -2,8 +2,9 @@ pragma solidity ^0.4.18;
 
 import './OracBet.sol';
 import './Bet.sol';
+import 'zeppelin-solidity/contracts/ownership/Ownable.sol';
 
-contract BetCenter {
+contract BetCenter is Ownable {
 
   mapping(bytes32 => OracBet[]) public oracBets;
   mapping(bytes32 => Bet[]) public bets;
@@ -25,7 +26,7 @@ contract BetCenter {
                   uint spread, uint leftOdds, uint middleOdds, uint rightOdds, uint flag,
                   uint startTime, uint confirmations) payable public {
     Bet bet = (new Bet).value(msg.value)(msg.sender, category, gameId, minimumBet, 
-                  spread, leftOdds, middleOdds, rightOdds , flag, startTime, confirmations);
+                  spread, leftOdds, middleOdds, rightOdds , flag, startTime, confirmations, owner);
     bets[category].push(bet);
     LogCreateBet(msg.sender, bet, category, startTime);
   }
