@@ -8,7 +8,7 @@ import './utils/DataCenterBridge.sol';
 contract Bet is Ownable, DataCenterBridge {
   using SafeMath for uint;
 
-  event LogDistributeReward(address addr, uint reward);
+  event LogDistributeReward(address addr, uint reward, uint index);
   event LogGameResult(bytes32 indexed category, bytes32 indexed gameId, uint leftPts, uint rightPts);
   event LogParticipant(address addr, uint choice, uint betAmount);
 
@@ -57,7 +57,7 @@ contract Bet is Ownable, DataCenterBridge {
   uint public winChoice;
   uint public startTime;
 
-  address [] players;
+  address [] public players;
   mapping(address => Player) public playerInfo;
 
   function() payable public {}
@@ -160,6 +160,7 @@ contract Bet is Ownable, DataCenterBridge {
     totalBetAmount = totalBetAmount.add(msg.value);
     numberOfBet = numberOfBet.add(1);
     updateAmountOfEachChoice(choice, msg.value);
+    players.push(msg.sender);
     LogParticipant(msg.sender, choice, msg.value);
   }
 
@@ -243,11 +244,18 @@ contract Bet is Ownable, DataCenterBridge {
   }
 
   /**
+   * @dev get the players
+   */
+  function getPlayers() view public returns (address[]) {
+    return players;
+  }
+
+  /**
    * @dev if there are some reasons lead game postpone or cancel
    *      the bet will also cancel and refund every bet
    */
   function refund() public {
-    for(uint i = 0; i < players.length; i++) {
+    for (uint i = 0; i < players.length; i++) {
       address playerAddress = players[i];
       playerAddress.transfer(playerInfo[playerAddress].betAmount);
     }
@@ -257,12 +265,10 @@ contract Bet is Ownable, DataCenterBridge {
    * @dev distribute ether to every winner as they choosed odds
    */
   function distributeReward(uint winOdds) internal {
-    for(uint i = 0; i < players.length; i++) {
-      address playerAddress = players[i];
-      if(playerInfo[playerAddress].choice == winChoice) {
-        // Distribute ether to winners
-        playerAddress.transfer(winOdds * playerInfo[playerAddress].betAmount / 100);
-        LogDistributeReward(playerAddress, winOdds * playerInfo[playerAddress].betAmount / 100);
+    for (uint i = 0; i < players.length; i++) {
+      if (playerInfo[players[i]].choice == winChoice) {
+        players[i].transfer(winOdds.mul(playerInfo[players[i]].betAmount).div(100));
+        LogDistributeReward(players[i], winOdds.mul(playerInfo[players[i]].betAmount).div(100), i);
       }
     }
   }
