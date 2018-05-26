@@ -1,16 +1,16 @@
 var Bet = artifacts.require('./Bet.sol')
 var BetCenter = artifacts.require('./BetCenter.sol')
-var web3 = require('web3')
+var w3 = require('web3')
 const { addDaysOnEVM, assertRevert } = require('truffle-js-test-helper')
 
 // return web3.utils.fromAscii(str)
 // return web3.utils.hexToAscii(bytes32)
 
 function getStr(hexStr) {
-  return web3.utils.hexToAscii(hexStr).replace(/\u0000/g, '')
+  return w3.utils.hexToAscii(hexStr).replace(/\u0000/g, '')
 }
 function getBytes(str) {
-  return web3.utils.fromAscii(str)
+  return w3.utils.fromAscii(str)
 }
 
 contract('Bet', accounts => {
@@ -24,25 +24,25 @@ contract('Bet', accounts => {
 
   let bet
   let betCenter
+  let scAddr
   let totalBetAmount = 0
-  let players = []
   const minimum_bet = 5e16
   const leftOdds = 250
   const middleOdds = 175
   const rightOdds = 120
   const deposit = 1e18
-  //const params = [getBytes('NBA'), getBytes('0021701030'), minimum_bet, 0, leftOdds, middleOdds, rightOdds, 1, 1528988400, 3600*3]
-  const params = [getBytes('NBA'), getBytes('0021701030'), minimum_bet, 9, leftOdds, middleOdds, rightOdds, 3, 1528988400, 3600*3]
+  const params = [getBytes('NBA'), getBytes('0021701030'), minimum_bet, 0, leftOdds, middleOdds, rightOdds, 1, 1528988400, 3600*3]
+  //const params = [getBytes('NBA'), getBytes('0021701030'), minimum_bet, 10, leftOdds, middleOdds, rightOdds, 3, 1528988400, 3600*3]
 
   before(() => {
     return BetCenter.deployed({from: owner})
     .then(instance => {
       betCenter = instance
-      return betCenter.createBet(...params, {gas: 4300000, from: dealer, value: 1e17})
+      return betCenter.createBet(...params, {gas: 4300000, from: dealer, value: deposit})
     })
     .then(events => {
-      const addr = events.logs[0].args.betAddr
-      bet = Bet.at(addr)
+      scAddr = events.logs[0].args.betAddr
+      bet = Bet.at(scAddr)
     })
   })
 
@@ -54,12 +54,19 @@ contract('Bet', accounts => {
   it('check bet params is correct', async () => {
     const category = await bet.category()
     const minimumBet = (await bet.minimumBet()).toNumber()
+    const _leftOdds = await bet.leftOdds()
+    const _rightOdds = await bet.rightOdds()
+    const _middleOdds = await bet.middleOdds()
+
+    assert.equal(_leftOdds.toNumber(), leftOdds)
+    assert.equal(_rightOdds, rightOdds)
+    assert.equal(_middleOdds, middleOdds)
     assert.equal(getStr(category), 'NBA')
     assert.equal(minimumBet, minimum_bet)
   })
 
   it('test place bet choice i odds is too large that dealer is insolvent', async () => {
-    const betAmount = 1e17
+    const betAmount = 1e18
     const choice = 1
     const addr = user1
     await assertRevert(bet.placeBet(choice, {from: addr, value: betAmount}))
@@ -74,7 +81,6 @@ contract('Bet', accounts => {
     const playerInfo = await bet.playerInfo(addr)
 
     totalBetAmount += betAmount
-    players.push(addr)
     assert.equal(tx.logs[0].args.addr, addr)
     assert.equal(tx.logs[0].args.choice, choice)
     assert.equal(tx.logs[0].args.betAmount, betAmount)
@@ -92,8 +98,6 @@ contract('Bet', accounts => {
     const playerInfo = await bet.playerInfo(addr)
 
     totalBetAmount += betAmount
-    players.push(addr)
-    assert.equal(tx.logs[0].args.addr, addr)
     assert.equal(tx.logs[0].args.addr, addr)
     assert.equal(tx.logs[0].args.choice, choice)
     assert.equal(playerInfo[0].toNumber(), betAmount)
@@ -110,8 +114,6 @@ contract('Bet', accounts => {
     const playerInfo = await bet.playerInfo(addr)
 
     totalBetAmount += betAmount
-    players.push(addr)
-    assert.equal(tx.logs[0].args.addr, addr)
     assert.equal(tx.logs[0].args.addr, addr)
     assert.equal(tx.logs[0].args.choice, choice)
     assert.equal(playerInfo[0].toNumber(), betAmount)
@@ -128,25 +130,49 @@ contract('Bet', accounts => {
     assert.equal(oldDeposit + chargeValue, newDeposit)
   })
 
+  it('test multi place bet', async () => {
+    const betAmount = 1e17
+    let choice = 1
+    for (let i = 5; i < 100; i++) {
+      choice = Math.floor(Math.random() * 3) + 1
+      await bet.placeBet(choice, {from: accounts[i], value: betAmount})
+    }
+  })
+
   it('test manual close bet', async () => {
-    await bet.manualCloseBet(118, 109, { from: owner })
-    const o = await bet.owner()
+    web3.eth.getBalance(user3, function(err, data) {
+      console.log('old balance: ', data.toNumber())
+    })
+    const _lp = 118
+    //const _rp = 118
+    const _rp = 109
+    const tx = await bet.manualCloseBet(_lp, _rp, { from: owner })
+    //tx.logs.forEach(l => {
+    //  console.log(l.args)
+    //})
+    console.log('=======================Winner number is: ', tx.logs.length - 1)
+    console.log('=======================Win Odds is: ', leftOdds)
     const choice = await bet.winChoice()
     const lp = await bet.leftPts()
     const rp = await bet.rightPts()
-    console.log(o, owner, dealer)
     console.log('win choice: ', choice.toNumber())
-
-    assert.equal(lp.toNumber(), 118)
-    assert.equal(rp.toNumber(), 109)
+    web3.eth.getBalance(user3, function(err, data) {
+      console.log('new balance: ', data.toNumber())
+    })
+    assert.equal(lp.toNumber(), _lp)
+    assert.equal(rp.toNumber(), _rp)
   })
 
   after(async () => {
-    players.forEach(async player => {
-      const playerInfo = await bet.playerInfo(player)
-      console.log(web3.utils.fromWei(String(playerInfo[0].toNumber())), playerInfo[1].toNumber())
+    web3.eth.getBalance(scAddr, function(err, data) {
+      console.log('Finally contract balance: ', data)
     })
+    const players = await bet.getPlayers()
+    const _totalBetAmount = await bet.totalBetAmount()
+    const _deposit = await bet.deposit()
+    console.log('Total bet amount is:      ', _totalBetAmount)
+    console.log('Deposit amount is:        ', _deposit)
+    console.log('Number of participant is: ', players.length)
   })
-
 })
 
