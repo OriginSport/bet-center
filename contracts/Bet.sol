@@ -211,8 +211,6 @@ contract Bet is Ownable, DataCenterBridge {
 
     winChoice = getWinChoice(leftPts, rightPts);
 
-    require(winChoice == 1 || winChoice == 2 || winChoice == 3);
-
     if (winChoice == 1) {
       distributeReward(leftOdds);
     } else if (winChoice == 2) {
