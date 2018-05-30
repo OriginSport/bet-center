@@ -237,6 +237,10 @@ contract Bet is Ownable, DataCenterBridge {
     } else {
       distributeReward(rightOdds);
     }
+
+    isBetClosed = true;
+    LogBetClosed(false, now);
+    withdraw();
   }
 
   /**
@@ -258,8 +262,10 @@ contract Bet is Ownable, DataCenterBridge {
     } else {
       distributeReward(rightOdds);
     }
+
     isBetClosed = true;
     LogBetClosed(false, now);
+    withdraw();
   }
 
   /**
@@ -285,14 +291,16 @@ contract Bet is Ownable, DataCenterBridge {
       players[i].transfer(playerInfo[players[i]].betAmount);
       LogRefund(players[i], playerInfo[players[i]].betAmount);
     }
+
     isBetClosed = true;
     LogBetClosed(true, now);
+    withdraw();
   }
 
   /**
    * @dev dealer can withdraw the remain ether after refund or closed
    */
-  function withdraw() onlyDealer public {
+  function withdraw() internal {
     require(isBetClosed);
     uint _balance = address(this).balance;
     dealer.transfer(_balance);
