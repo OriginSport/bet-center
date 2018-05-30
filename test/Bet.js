@@ -44,6 +44,7 @@ contract('Bet', accounts => {
   const deposit = 1e18
   const params = [getBytes('NBA'), getBytes('0021701030'), minimum_bet, 0, leftOdds, middleOdds, rightOdds, 1, 1528988400, 3600*3]
   //const params = [getBytes('NBA'), getBytes('0021701030'), minimum_bet, 10, leftOdds, middleOdds, rightOdds, 3, 1528988400, 3600*3]
+  console.log('The params of this bet: ', params)
 
   const testAmount = 1e17
 
@@ -148,55 +149,64 @@ contract('Bet', accounts => {
     }
   })
 
-  //it('test manual close bet', async () => {
-  //  web3.eth.getBalance(user1, function(err, data) {
-  //    console.log('old balance: ', data)
-  //  })
-  //  const _lp = 118
-  //  //const _rp = 118
-  //  const _rp = 109
-  //  const tx = await bet.manualCloseBet(_lp, _rp, { from: owner })
-  //  //tx.logs.forEach(l => {
-  //  //  console.log(l.args)
-  //  //})
-  //  console.log('=======================Winner number is: ', tx.logs.length - 1)
-  //  console.log('=======================Win Odds is: ', leftOdds)
-  //  const choice = await bet.winChoice()
-  //  const lp = await bet.leftPts()
-  //  const rp = await bet.rightPts()
-  //  console.log('win choice: ', choice.toNumber())
-  //  web3.eth.getBalance(user1, function(err, data) {
-  //    console.log('new balance: ', data)
-  //  })
-  //  assert.equal(lp.toNumber(), _lp)
-  //  assert.equal(rp.toNumber(), _rp)
+  it('test manual close bet', async () => {
+    web3.eth.getBalance(user1, function(err, data) {
+      console.log('old balance: ', data)
+    })
+    const dealerB = await getBalance(dealer)
+    const _lp = 118
+    //const _rp = 118
+    const _rp = 109
+    const tx = await bet.manualCloseBet(_lp, _rp, { from: owner })
+    //tx.logs.forEach(l => {
+    //  console.log(l.args)
+    //})
+    const remainB = tx.logs[tx.logs.length-1].args.withdrawAmount.toNumber()
+    console.log('remain balance is: ', remainB)
+    console.log('=======================Winner number is: ', tx.logs.length - 1)
+    const choice = await bet.winChoice()
+    const lp = await bet.leftPts()
+    const rp = await bet.rightPts()
+    console.log('win choice: ', choice.toNumber())
+    web3.eth.getBalance(user1, function(err, data) {
+      console.log('new balance: ', data)
+    })
+    assert.equal(lp.toNumber(), _lp)
+    assert.equal(rp.toNumber(), _rp)
+
+    const _dealerB = await getBalance(dealer)
+    assert.equal(dealerB.add(remainB).toNumber(), _dealerB.toNumber())
+  })
+
+  //it('test refund', async () => {
+
+  //  const dealerB = await getBalance(dealer)
+  //  const user1B = await getBalance(user1)
+  //  const tx = await bet.refund({from: owner});
+  //  const remainB = tx.logs[tx.logs.length-1].args.withdrawAmount.toNumber()
+  //  console.log('refund remain balance is: ', remainB)
+  //  const _user1B = await getBalance(user1)
+  //  const _dealerB = await getBalance(dealer)
+  //
+  //  assert.equal(user1B.add(testAmount).toNumber(), _user1B.toNumber())
+  //  assert.equal(dealerB.add(remainB).toNumber(), _dealerB.toNumber())
   //})
 
-  it('test refund', async () => {
-
-    const user1B = await getBalance(user1)
-    await bet.refund({from: owner});
-    const _user1B = await getBalance(user1)
-
-    assert.equal(user1B.add(testAmount).toNumber(), _user1B.toNumber())
-  })
-
-  it('test withdraw', async () => {
-    const b = await bet.getBalance()
-    const dealerB = await getBalance(dealer)
-    const tx = await bet.withdraw({from: dealer})
-    const gasUsed = parseInt(tx.receipt.gasUsed) * 100000000000
-    const _dealerB = await getBalance(dealer)
-    assert.equal(dealerB.add(b).toNumber(), _dealerB.add(gasUsed).toNumber())
-  })
+  // it('test withdraw', async () => {
+  //   const b = await bet.getBalance()
+  //   const dealerB = await getBalance(dealer)
+  //   const tx = await bet.withdraw({from: dealer})
+  //   const gasUsed = parseInt(tx.receipt.gasUsed) * 100000000000
+  //   const _dealerB = await getBalance(dealer)
+  //   assert.equal(dealerB.add(b).toNumber(), _dealerB.add(gasUsed).toNumber())
+  // })
 
   after(async () => {
-    web3.eth.getBalance(scAddr, function(err, data) {
-      console.log('Finally contract balance: ', data)
-    })
+    const choice = await bet.winChoice()
     const players = await bet.getPlayers()
     const _totalBetAmount = await bet.totalBetAmount()
     const _deposit = await bet.deposit()
+    console.log("The winner's choice is:   ", choice)
     console.log('Total bet amount is:      ', _totalBetAmount)
     console.log('Deposit amount is:        ', _deposit)
     console.log('Number of participant is: ', players.length)
