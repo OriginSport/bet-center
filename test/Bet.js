@@ -5,6 +5,17 @@ const { addDaysOnEVM, assertRevert } = require('truffle-js-test-helper')
 
 // return web3.utils.fromAscii(str)
 // return web3.utils.hexToAscii(bytes32)
+function getBalance (address) {
+  return new Promise (function (resolve, reject) {
+    web3.eth.getBalance(address, function (error, result) {
+      if (error) {
+        reject(error);
+      } else {
+        resolve(result);
+      }
+    })
+  })
+}
 
 function getStr(hexStr) {
   return w3.utils.hexToAscii(hexStr).replace(/\u0000/g, '')
@@ -20,7 +31,7 @@ contract('Bet', accounts => {
   var user1 = accounts[2]
   var user2 = accounts[3]
   var user3 = accounts[4]
-  console.log(`dealer:${dealer}\nuser1:${user1}\nuser2:${user2}`)
+  console.log(`owner:${owner}\ndealer:${dealer}\nuser1:${user1}\nuser2:${user2}`)
 
   let bet
   let betCenter
@@ -33,6 +44,8 @@ contract('Bet', accounts => {
   const deposit = 1e18
   const params = [getBytes('NBA'), getBytes('0021701030'), minimum_bet, 0, leftOdds, middleOdds, rightOdds, 1, 1528988400, 3600*3]
   //const params = [getBytes('NBA'), getBytes('0021701030'), minimum_bet, 10, leftOdds, middleOdds, rightOdds, 3, 1528988400, 3600*3]
+
+  const testAmount = 1e17
 
   before(() => {
     return BetCenter.deployed({from: owner})
@@ -73,50 +86,47 @@ contract('Bet', accounts => {
   })
 
   it('test another user place bet', async () => {
-    const betAmount = 1e17
     const choice = 2
     const addr = user2
-    const tx = await bet.placeBet(choice, {from: addr, value: betAmount})
+    const tx = await bet.placeBet(choice, {from: addr, value: testAmount})
     const _totalBetAmount = await bet.totalBetAmount()
     const playerInfo = await bet.playerInfo(addr)
 
-    totalBetAmount += betAmount
+    totalBetAmount += testAmount
     assert.equal(tx.logs[0].args.addr, addr)
     assert.equal(tx.logs[0].args.choice, choice)
-    assert.equal(tx.logs[0].args.betAmount, betAmount)
-    assert.equal(playerInfo[0].toNumber(), betAmount)
+    assert.equal(tx.logs[0].args.betAmount, testAmount)
+    assert.equal(playerInfo[0].toNumber(), testAmount)
     assert.equal(playerInfo[1].toNumber(), choice)
     assert.equal(_totalBetAmount.toNumber(), totalBetAmount)
   })
 
   it('test the third user place bet', async () => {
-    const betAmount = 1e17
     const choice = 3
     const addr = user3
-    const tx = await bet.placeBet(choice, {from: addr, value: betAmount})
+    const tx = await bet.placeBet(choice, {from: addr, value: testAmount})
     const _totalBetAmount = await bet.totalBetAmount()
     const playerInfo = await bet.playerInfo(addr)
 
-    totalBetAmount += betAmount
+    totalBetAmount += testAmount
     assert.equal(tx.logs[0].args.addr, addr)
     assert.equal(tx.logs[0].args.choice, choice)
-    assert.equal(playerInfo[0].toNumber(), betAmount)
+    assert.equal(playerInfo[0].toNumber(), testAmount)
     assert.equal(playerInfo[1].toNumber(), choice)
     assert.equal(_totalBetAmount.toNumber(), totalBetAmount)
   })
 
   it('test the forth user place bet', async () => {
-    const betAmount = 1e17
     const choice = 1
     const addr = user1
-    const tx = await bet.placeBet(choice, {from: addr, value: betAmount})
+    const tx = await bet.placeBet(choice, {from: addr, value: testAmount})
     const _totalBetAmount = await bet.totalBetAmount()
     const playerInfo = await bet.playerInfo(addr)
 
-    totalBetAmount += betAmount
+    totalBetAmount += testAmount
     assert.equal(tx.logs[0].args.addr, addr)
     assert.equal(tx.logs[0].args.choice, choice)
-    assert.equal(playerInfo[0].toNumber(), betAmount)
+    assert.equal(playerInfo[0].toNumber(), testAmount)
     assert.equal(playerInfo[1].toNumber(), choice)
     assert.equal(_totalBetAmount.toNumber(), totalBetAmount)
   })
@@ -131,36 +141,44 @@ contract('Bet', accounts => {
   })
 
   it('test multi place bet', async () => {
-    const betAmount = 1e17
     let choice = 1
     for (let i = 5; i < 100; i++) {
       choice = Math.floor(Math.random() * 3) + 1
-      await bet.placeBet(choice, {from: accounts[i], value: betAmount})
+      await bet.placeBet(choice, {from: accounts[i], value: testAmount})
     }
   })
 
-  it('test manual close bet', async () => {
-    web3.eth.getBalance(user3, function(err, data) {
-      console.log('old balance: ', data.toNumber())
-    })
-    const _lp = 118
-    //const _rp = 118
-    const _rp = 109
-    const tx = await bet.manualCloseBet(_lp, _rp, { from: owner })
-    //tx.logs.forEach(l => {
-    //  console.log(l.args)
-    //})
-    console.log('=======================Winner number is: ', tx.logs.length - 1)
-    console.log('=======================Win Odds is: ', leftOdds)
-    const choice = await bet.winChoice()
-    const lp = await bet.leftPts()
-    const rp = await bet.rightPts()
-    console.log('win choice: ', choice.toNumber())
-    web3.eth.getBalance(user3, function(err, data) {
-      console.log('new balance: ', data.toNumber())
-    })
-    assert.equal(lp.toNumber(), _lp)
-    assert.equal(rp.toNumber(), _rp)
+  //it('test manual close bet', async () => {
+  //  web3.eth.getBalance(user1, function(err, data) {
+  //    console.log('old balance: ', data)
+  //  })
+  //  const _lp = 118
+  //  //const _rp = 118
+  //  const _rp = 109
+  //  const tx = await bet.manualCloseBet(_lp, _rp, { from: owner })
+  //  //tx.logs.forEach(l => {
+  //  //  console.log(l.args)
+  //  //})
+  //  console.log('=======================Winner number is: ', tx.logs.length - 1)
+  //  console.log('=======================Win Odds is: ', leftOdds)
+  //  const choice = await bet.winChoice()
+  //  const lp = await bet.leftPts()
+  //  const rp = await bet.rightPts()
+  //  console.log('win choice: ', choice.toNumber())
+  //  web3.eth.getBalance(user1, function(err, data) {
+  //    console.log('new balance: ', data)
+  //  })
+  //  assert.equal(lp.toNumber(), _lp)
+  //  assert.equal(rp.toNumber(), _rp)
+  //})
+
+  it('test refund', async () => {
+
+    const user1B = await getBalance(user1)
+    await bet.refund({from: owner});
+    const _user1B = await getBalance(user1)
+
+    console.log(user1B, _user1B)
   })
 
   after(async () => {
