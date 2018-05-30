@@ -145,7 +145,7 @@ contract Bet is Ownable, DataCenterBridge {
    */
   function updateAmountOfEachChoice(uint choice, uint amount) internal {
     if (choice == 1) {
-      leftAmount == leftAmount.add(amount);
+      leftAmount = leftAmount.add(amount);
     } else if (choice == 2) {
       middleAmount = middleAmount.add(amount);
     } else {
