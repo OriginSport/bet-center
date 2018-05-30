@@ -13,6 +13,7 @@ contract Bet is Ownable, DataCenterBridge {
   event LogParticipant(address addr, uint choice, uint betAmount);
   event LogRefund(address addr, uint betAmount);
   event LogBetClosed(bool isRefund, uint timestamp);
+  event LogDealerWithdraw(address addr, uint withdrawAmount);
 
   /** 
    * @desc
@@ -293,7 +294,9 @@ contract Bet is Ownable, DataCenterBridge {
    */
   function withdraw() onlyDealer public {
     require(isBetClosed);
-    dealer.transfer(address(this).balance);
+    uint _balance = address(this).balance;
+    dealer.transfer(_balance);
+    LogDealerWithdraw(dealer, _balance);
   }
 
   /**
