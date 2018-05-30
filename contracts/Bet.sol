@@ -11,6 +11,8 @@ contract Bet is Ownable, DataCenterBridge {
   event LogDistributeReward(address addr, uint reward, uint index);
   event LogGameResult(bytes32 indexed category, bytes32 indexed gameId, uint leftPts, uint rightPts);
   event LogParticipant(address addr, uint choice, uint betAmount);
+  event LogRefund(address addr, uint betAmount);
+  event LogBetClosed(bool isRefund, uint timestamp);
 
   /** 
    * @desc
@@ -57,8 +59,18 @@ contract Bet is Ownable, DataCenterBridge {
   uint public winChoice;
   uint public startTime;
 
+  bool public isBetClosed = false;
+
   address [] public players;
   mapping(address => Player) public playerInfo;
+
+  /**
+   * @dev Throws if called by any account other than the dealer
+   */
+  modifier onlyDealer() {
+    require(msg.sender == dealer);
+    _;
+  }
 
   function() payable public {}
 
@@ -172,6 +184,9 @@ contract Bet is Ownable, DataCenterBridge {
     deposit = deposit.add(msg.value);
   }
 
+  /**
+   * @dev given game result, _return win choice by specific spread
+   */
   function getWinChoice(uint _leftPts, uint _rightPts) public view returns (uint) {
     uint _winChoice;
     if (spread == 0) {
@@ -201,7 +216,10 @@ contract Bet is Ownable, DataCenterBridge {
   }
 
   /**
-   * @dev manualCloseBet could only be called by owner
+   * @dev manualCloseBet could only be called by owner,
+   *      this method only be used for ropsten,
+   *      when ethereum-events-data deployed,
+   *      game result should not be upload by owner
    */
   function manualCloseBet(uint16 _leftPts, uint16 _rightPts) onlyOwner external {
     leftPts = _leftPts;
@@ -239,6 +257,8 @@ contract Bet is Ownable, DataCenterBridge {
     } else {
       distributeReward(rightOdds);
     }
+    isBetClosed = true;
+    LogBetClosed(false, now);
   }
 
   /**
@@ -249,14 +269,31 @@ contract Bet is Ownable, DataCenterBridge {
   }
 
   /**
+   * @dev get contract balance
+   */
+  function getBalance() view public returns (uint) {
+    return address(this).balance;
+  }
+
+  /**
    * @dev if there are some reasons lead game postpone or cancel
    *      the bet will also cancel and refund every bet
    */
-  function refund() public {
+  function refund() onlyOwner public {
     for (uint i = 0; i < players.length; i++) {
-      address playerAddress = players[i];
-      playerAddress.transfer(playerInfo[playerAddress].betAmount);
+      players[i].transfer(playerInfo[players[i]].betAmount);
+      LogRefund(players[i], playerInfo[players[i]].betAmount);
     }
+    isBetClosed = true;
+    LogBetClosed(true, now);
+  }
+
+  /**
+   * @dev dealer can withdraw the remain ether after refund or closed
+   */
+  function withdraw() onlyDealer public {
+    require(isBetClosed);
+    dealer.transfer(address(this).balance);
   }
 
   /**
