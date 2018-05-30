@@ -178,7 +178,16 @@ contract('Bet', accounts => {
     await bet.refund({from: owner});
     const _user1B = await getBalance(user1)
 
-    console.log(user1B, _user1B)
+    assert.equal(user1B.add(testAmount).toNumber(), _user1B.toNumber())
+  })
+
+  it('test withdraw', async () => {
+    const b = await bet.getBalance()
+    const dealerB = await getBalance(dealer)
+    const tx = await bet.withdraw({from: dealer})
+    const gasUsed = parseInt(tx.receipt.gasUsed) * 100000000000
+    const _dealerB = await getBalance(dealer)
+    assert.equal(dealerB.add(b).toNumber(), _dealerB.add(gasUsed).toNumber())
   })
 
   after(async () => {
