@@ -18,6 +18,7 @@ This is a decentralized sports betting platform based on Ethereum.
 ## Live on Ethereum
 
 The contracts are only available on testnet (ropsten).
+
 [OriginBet on ropsten](https://ropsten.originsport.io/)
 
 ### Mainnet
@@ -26,5 +27,5 @@ Not deployed
 
 ### Testnet
 
-OriginBet: [0x6734Bef14d6c067690A019B3a9c6974AFC01Efb7](https://ropsten.etherscan.io/address/0x6734Bef14d6c067690A019B3a9c6974AFC01Efb7)
+OriginBet Smart Contract: [0x6734Bef14d6c067690A019B3a9c6974AFC01Efb7](https://ropsten.etherscan.io/address/0x6734Bef14d6c067690A019B3a9c6974AFC01Efb7)
 
