@@ -23,8 +23,8 @@ contract BetCenter is Ownable {
   }
 
   function createBet(bytes32 category, bytes32 gameId, uint minimumBet, 
-                  uint spread, uint leftOdds, uint middleOdds, uint rightOdds, uint flag,
-                  uint startTime, uint confirmations) payable public {
+                  uint8 spread, uint16  leftOdds, uint16  middleOdds, uint16 rightOdds, uint8  flag,
+                  uint startTime, uint8  confirmations) payable public {
     Bet bet = (new Bet).value(msg.value)(msg.sender, category, gameId, minimumBet, 
                   spread, leftOdds, middleOdds, rightOdds , flag, startTime, confirmations, owner);
     bets[category].push(bet);
