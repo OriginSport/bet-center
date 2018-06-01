@@ -25,14 +25,21 @@ contract Bet is Ownable, DataCenterBridge {
    * spread: need sub 0.5, if spread is 1 means 0.5, 0 means no spread
    * flag: indicate which team get spread, 1 means leftTeam, 3 means rightTeam
    */
-  bytes32 public category;
-  bytes32 public gameId;
-  uint public minimumBet;
-  uint public spread;
-  uint public flag;
-  uint public leftOdds;
-  uint public middleOdds;
-  uint public rightOdds;
+  struct BetInfo {
+    bytes32 category;
+    bytes32 gameId;
+    uint8   spread;
+    uint8   flag;
+    uint16  leftOdds;
+    uint16  middleOdds;
+    uint16  rightOdds;
+    uint    minimumBet;
+    uint    startTime;
+    uint    deposit;
+    address dealer;
+  }
+
+  BetInfo betInfo;
 
   struct Player {
     uint betAmount;
@@ -46,21 +53,18 @@ contract Bet is Ownable, DataCenterBridge {
    * flag: Indicate which team take spread
    *   1 means leftTeam, 3 means rightTeam
    */
-  address public dealer;
+  uint8 public winChoice;
+  uint8 public confirmations = 0;
+  uint8 public neededConfirmations = 1;
   uint16 public leftPts;
   uint16 public rightPts;
-  uint8 public confirmations = 0;
-  uint public neededConfirmations = 1;
-  uint public deposit = 0;
+  bool public isBetClosed = false;
+
   uint public totalBetAmount = 0;
   uint public leftAmount;
   uint public middleAmount;
   uint public rightAmount;
   uint public numberOfBet;
-  uint public winChoice;
-  uint public startTime;
-
-  bool public isBetClosed = false;
 
   address [] public players;
   mapping(address => Player) public playerInfo;
@@ -69,30 +73,32 @@ contract Bet is Ownable, DataCenterBridge {
    * @dev Throws if called by any account other than the dealer
    */
   modifier onlyDealer() {
-    require(msg.sender == dealer);
+    require(msg.sender == betInfo.dealer);
     _;
   }
 
   function() payable public {}
 
   function Bet(address _dealer, bytes32 _category, bytes32 _gameId, uint _minimumBet, 
-                  uint _spread, uint _leftOdds, uint _middleOdds, uint _rightOdds, uint _flag,
-                  uint _startTime, uint _neededConfirmations, address _owner) payable public {
+                  uint8 _spread, uint16 _leftOdds, uint16 _middleOdds, uint16 _rightOdds, uint8 _flag,
+                  uint _startTime, uint8 _neededConfirmations, address _owner) payable public {
     require(_flag == 1 || _flag == 3);
     require(_startTime > now);
     require(msg.value >= 0.1 ether);
     require(_neededConfirmations >= neededConfirmations);
-    dealer = _dealer;
-    deposit = msg.value;
-    flag = _flag;
-    category = _category;
-    gameId = _gameId;
-    minimumBet = _minimumBet;
-    spread = _spread;
-    leftOdds = _leftOdds;
-    middleOdds = _middleOdds;
-    rightOdds = _rightOdds;
-    startTime = _startTime;
+
+    betInfo.dealer = _dealer;
+    betInfo.deposit = msg.value;
+    betInfo.flag = _flag;
+    betInfo.category = _category;
+    betInfo.gameId = _gameId;
+    betInfo.minimumBet = _minimumBet;
+    betInfo.spread = _spread;
+    betInfo.leftOdds = _leftOdds;
+    betInfo.middleOdds = _middleOdds;
+    betInfo.rightOdds = _rightOdds;
+    betInfo.startTime = _startTime;
+
     neededConfirmations = _neededConfirmations;
     owner = _owner;
   }
@@ -124,14 +130,14 @@ contract Bet is Ownable, DataCenterBridge {
   function isSolvent(uint choice, uint amount) internal view returns (bool) {
     uint needAmount;
     if (choice == 1) {
-      needAmount = leftOdds.mul(leftAmount.add(amount)).div(100);
+      needAmount = (leftAmount.add(amount)).mul(betInfo.leftOdds).div(100);
     } else if (choice == 2) {
-      needAmount = middleOdds.mul(middleAmount.add(amount)).div(100);
+      needAmount = (middleAmount.add(amount)).mul(betInfo.middleOdds).div(100);
     } else {
-      needAmount = rightOdds.mul(rightAmount.add(amount)).div(100);
+      needAmount = (rightAmount.add(amount)).mul(betInfo.rightOdds).div(100);
     }
 
-    if (needAmount.add(getRefundTxFee()) > totalBetAmount.add(amount).add(deposit)) {
+    if (needAmount.add(getRefundTxFee()) > totalBetAmount.add(amount).add(betInfo.deposit)) {
       return false;
     } else {
       return true;
@@ -158,9 +164,9 @@ contract Bet is Ownable, DataCenterBridge {
    * @param choice indicate which team user choose
    */
   function placeBet(uint choice) public payable {
-    require(now < startTime);
+    require(now < betInfo.startTime);
     require(choice == 1 ||  choice == 2 || choice == 3);
-    require(msg.value >= minimumBet);
+    require(msg.value >= betInfo.minimumBet);
     require(!checkPlayerExists(msg.sender));
 
     if (!isSolvent(choice, msg.value)) {
@@ -181,16 +187,16 @@ contract Bet is Ownable, DataCenterBridge {
    * @dev in order to let more people participant, dealer can recharge
    */
   function rechargeDeposit() public payable {
-    require(msg.value >= minimumBet);
-    deposit = deposit.add(msg.value);
+    require(msg.value >= betInfo.minimumBet);
+    betInfo.deposit = betInfo.deposit.add(msg.value);
   }
 
   /**
    * @dev given game result, _return win choice by specific spread
    */
-  function getWinChoice(uint _leftPts, uint _rightPts) public view returns (uint) {
-    uint _winChoice;
-    if (spread == 0) {
+  function getWinChoice(uint _leftPts, uint _rightPts) public view returns (uint8) {
+    uint8 _winChoice;
+    if (betInfo.spread == 0) {
       if (_leftPts > _rightPts) {
         _winChoice = 1;
       } else if (_leftPts == _rightPts) {
@@ -199,14 +205,14 @@ contract Bet is Ownable, DataCenterBridge {
         _winChoice = 3;
       }
     } else {
-      if (flag == 1) {
-        if (_leftPts + spread > _rightPts) {
+      if (betInfo.flag == 1) {
+        if (_leftPts + betInfo.spread > _rightPts) {
           _winChoice = 1;
         } else {
           _winChoice = 3;
         }
       } else {
-        if (_rightPts + spread > _leftPts) {
+        if (_rightPts + betInfo.spread > _leftPts) {
           _winChoice = 3;
         } else {
           _winChoice = 1;
@@ -226,16 +232,16 @@ contract Bet is Ownable, DataCenterBridge {
     leftPts = _leftPts;
     rightPts = _rightPts;
 
-    LogGameResult(category, gameId, leftPts, rightPts);
+    LogGameResult(betInfo.category, betInfo.gameId, leftPts, rightPts);
 
     winChoice = getWinChoice(leftPts, rightPts);
 
     if (winChoice == 1) {
-      distributeReward(leftOdds);
+      distributeReward(betInfo.leftOdds);
     } else if (winChoice == 2) {
-      distributeReward(middleOdds);
+      distributeReward(betInfo.middleOdds);
     } else {
-      distributeReward(rightOdds);
+      distributeReward(betInfo.rightOdds);
     }
 
     isBetClosed = true;
@@ -247,20 +253,20 @@ contract Bet is Ownable, DataCenterBridge {
    * @dev closeBet could be called by everyone, but owner/dealer should to this.
    */
   function closeBet() external {
-    (leftPts, rightPts, confirmations) = dataCenterGetResult(gameId);
+    (leftPts, rightPts, confirmations) = dataCenterGetResult(betInfo.gameId);
 
     require(confirmations >= neededConfirmations);
 
-    LogGameResult(category, gameId, leftPts, rightPts);
+    LogGameResult(betInfo.category, betInfo.gameId, leftPts, rightPts);
 
     winChoice = getWinChoice(leftPts, rightPts);
 
     if (winChoice == 1) {
-      distributeReward(leftOdds);
+      distributeReward(betInfo.leftOdds);
     } else if (winChoice == 2) {
-      distributeReward(middleOdds);
+      distributeReward(betInfo.middleOdds);
     } else {
-      distributeReward(rightOdds);
+      distributeReward(betInfo.rightOdds);
     }
 
     isBetClosed = true;
@@ -303,8 +309,8 @@ contract Bet is Ownable, DataCenterBridge {
   function withdraw() internal {
     require(isBetClosed);
     uint _balance = address(this).balance;
-    dealer.transfer(_balance);
-    LogDealerWithdraw(dealer, _balance);
+    betInfo.dealer.transfer(_balance);
+    LogDealerWithdraw(betInfo.dealer, _balance);
   }
 
   /**
