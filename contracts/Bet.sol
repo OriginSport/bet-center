@@ -48,8 +48,6 @@ contract Bet is Ownable, DataCenterBridge {
    * @desc
    * winChoice: Indicate the winner choice of this betting
    *   1 means leftTeam win, 3 means rightTeam win, 2 means draw(leftTeam is not always equivalent to the home team)
-   * flag: Indicate which team take spread
-   *   1 means leftTeam, 3 means rightTeam
    */
   uint8 public winChoice;
   uint8 public confirmations = 0;
@@ -110,6 +108,35 @@ contract Bet is Ownable, DataCenterBridge {
     return (betInfo.category, betInfo.gameId, betInfo.spread, betInfo.flag, betInfo.leftOdds, betInfo.middleOdds,
             betInfo.rightOdds, betInfo.minimumBet, betInfo.startTime, betInfo.deposit, betInfo.dealer);
   }
+
+  /**
+   * @dev get basic information of this bet
+   *
+   *  uint public numberOfBet;
+   *  uint public totalBetAmount = 0;
+   *  uint public leftAmount;
+   *  uint public middleAmount;
+   *  uint public rightAmount;
+   *  uint public deposit;
+   */
+  function getBetMutableData() public view returns (uint, uint, uint, uint, uint, uint) {
+    return (numberOfBet, totalBetAmount, leftAmount, middleAmount, rightAmount, betInfo.deposit);
+  }
+
+  /**
+   * @dev get bet result information
+   *
+   *  uint8 public winChoice;
+   *  uint8 public confirmations = 0;
+   *  uint8 public neededConfirmations = 1;
+   *  uint16 public leftPts;
+   *  uint16 public rightPts;
+   *  bool public isBetClosed = false;
+   */
+  function getBetResult() public view returns (uint8, uint8, uint8, uint16, uint16, bool) {
+    return (winChoice, confirmations, neededConfirmations, leftPts, rightPts, isBetClosed);
+  }
+
   /**
    * @dev calculate the gas whichdistribute rewards will cost
    * set default gasPrice is 5000000000
