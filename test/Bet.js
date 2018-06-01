@@ -44,7 +44,22 @@ contract('Bet', accounts => {
   const deposit = 1e18
   const params = [getBytes('NBA'), getBytes('0021701030'), minimum_bet, 0, leftOdds, middleOdds, rightOdds, 1, 1528988400, 3600*3]
   //const params = [getBytes('NBA'), getBytes('0021701030'), minimum_bet, 10, leftOdds, middleOdds, rightOdds, 3, 1528988400, 3600*3]
-  console.log('The params of this bet: ', params)
+
+  /*
+   struct BetInfo {
+    bytes32 category;
+    bytes32 gameId;
+    uint8   spread;
+    uint8   flag;
+    uint16  leftOdds;
+    uint16  middleOdds;
+    uint16  rightOdds;
+    uint    minimumBet;
+    uint    startTime;
+    uint    deposit;
+    address dealer;
+  }
+  */  
 
   const testAmount = 1e17
 
@@ -66,17 +81,8 @@ contract('Bet', accounts => {
   })
 
   it('check bet params is correct', async () => {
-    const category = await bet.category()
-    const minimumBet = (await bet.minimumBet()).toNumber()
-    const _leftOdds = await bet.leftOdds()
-    const _rightOdds = await bet.rightOdds()
-    const _middleOdds = await bet.middleOdds()
-
-    assert.equal(_leftOdds.toNumber(), leftOdds)
-    assert.equal(_rightOdds, rightOdds)
-    assert.equal(_middleOdds, middleOdds)
-    assert.equal(getStr(category), 'NBA')
-    assert.equal(minimumBet, minimum_bet)
+    const betInfo = await bet.getBetInfo()
+    console.log(betInfo)
   })
 
   it('test place bet choice i odds is too large that dealer is insolvent', async () => {
@@ -134,9 +140,9 @@ contract('Bet', accounts => {
 
   it('test recharge deposit', async () => {
     const chargeValue = 1e17
-    const oldDeposit = (await bet.deposit()).toNumber()
+    const oldDeposit = (await bet.getBetInfo())[9].toNumber()
     const tx = await bet.rechargeDeposit({from: dealer, value: chargeValue})
-    const newDeposit = (await bet.deposit()).toNumber()
+    const newDeposit = (await bet.getBetInfo())[9].toNumber()
 
     assert.equal(oldDeposit + chargeValue, newDeposit)
   })
@@ -205,7 +211,7 @@ contract('Bet', accounts => {
     const choice = await bet.winChoice()
     const players = await bet.getPlayers()
     const _totalBetAmount = await bet.totalBetAmount()
-    const _deposit = await bet.deposit()
+    const _deposit = (await bet.getBetInfo())[9]
     console.log("The winner's choice is:   ", choice)
     console.log('Total bet amount is:      ', _totalBetAmount)
     console.log('Deposit amount is:        ', _deposit)
