@@ -39,8 +39,6 @@ contract Bet is Ownable, DataCenterBridge {
     address dealer;
   }
 
-  BetInfo betInfo;
-
   struct Player {
     uint betAmount;
     uint choice;
@@ -79,6 +77,8 @@ contract Bet is Ownable, DataCenterBridge {
 
   function() payable public {}
 
+  BetInfo betInfo;
+
   function Bet(address _dealer, bytes32 _category, bytes32 _gameId, uint _minimumBet, 
                   uint8 _spread, uint16 _leftOdds, uint16 _middleOdds, uint16 _rightOdds, uint8 _flag,
                   uint _startTime, uint8 _neededConfirmations, address _owner) payable public {
@@ -103,6 +103,13 @@ contract Bet is Ownable, DataCenterBridge {
     owner = _owner;
   }
 
+  /**
+   * @dev get basic information of this bet
+   */
+  function getBetInfo() public view returns (bytes32, bytes32, uint8, uint8, uint16, uint16, uint16, uint, uint, uint, address) {
+    return (betInfo.category, betInfo.gameId, betInfo.spread, betInfo.flag, betInfo.leftOdds, betInfo.middleOdds,
+            betInfo.rightOdds, betInfo.minimumBet, betInfo.startTime, betInfo.deposit, betInfo.dealer);
+  }
   /**
    * @dev calculate the gas whichdistribute rewards will cost
    * set default gasPrice is 5000000000
