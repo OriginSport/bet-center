@@ -12,10 +12,10 @@ contract DataCenterBridge {
   uint8 constant networkID_auto = 0;
   uint8 constant networkID_mainnet = 1;
   uint8 constant networkID_testnet = 2;
-  string networkName;
+  string public networkName;
 
-  address mainnetAddr = 0xaAaAaAaaAaAaAaaAaAAAAAAAAaaaAaAaAaaAaaAa;
-  address testnetAddr = 0xbBbBBBBbbBBBbbbBbbBbbbbBBbBbbbbBbBbbBBbB;
+  address public mainnetAddr = 0xaAaAaAaaAaAaAaaAaAAAAAAAAaaaAaAaAaaAaaAa;
+  address public testnetAddr = 0x282b192518fc09568de0E66Df8e2533f88C16672;
 
   DataCenterAddrResolverInterface DAR;
 
