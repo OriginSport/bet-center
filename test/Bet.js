@@ -184,6 +184,17 @@ contract('Bet', accounts => {
     assert.equal(dealerB.add(remainB).toNumber(), _dealerB.toNumber())
   })
 
+
+  it('test manual close bet again', async () => {
+    const _lp = 118
+    const _rp = 109
+    await assertRevert(bet.manualCloseBet(_lp, _rp, { from: owner }))
+  })
+
+  it('test close bet after bet closed', async () => {
+    await assertRevert(bet.closeBet({ from: owner }))
+  })
+
   //it('test refund', async () => {
 
   //  const dealerB = await getBalance(dealer)
