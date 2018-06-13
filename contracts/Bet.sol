@@ -263,6 +263,7 @@ contract Bet is Ownable, DataCenterBridge {
    *      game result should not be upload by owner
    */
   function manualCloseBet(uint16 _leftPts, uint16 _rightPts) onlyOwner external {
+    require(!isBetClosed);
     leftPts = _leftPts;
     rightPts = _rightPts;
 
@@ -287,6 +288,7 @@ contract Bet is Ownable, DataCenterBridge {
    * @dev closeBet could be called by everyone, but owner/dealer should to this.
    */
   function closeBet() external {
+    require(!isBetClosed);
     (leftPts, rightPts, confirmations) = dataCenterGetResult(betInfo.gameId);
 
     require(confirmations >= neededConfirmations);
