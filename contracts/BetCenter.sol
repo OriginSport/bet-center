@@ -5,10 +5,7 @@ import 'zeppelin-solidity/contracts/ownership/Ownable.sol';
 
 contract BetCenter is Ownable {
 
-  mapping(bytes32 => Bet[]) public bets;
-  mapping(bytes32 => bytes32[]) public gameIds;
-
-  event LogCreateBet(address indexed dealerAddr, address betAddr, bytes32 indexed category, uint indexed startTime);
+  event LogCreateBet(uint indexed startTime, uint indexed spreadTag, bytes32 indexed category, uint deposit, address bet, bytes32 gameId);
 
   function() payable public {}
 
@@ -17,22 +14,11 @@ contract BetCenter is Ownable {
                   uint startTime, uint8 confirmations) payable public {
     Bet bet = (new Bet).value(msg.value)(msg.sender, category, gameId, minimumBet, 
                   spread, leftOdds, middleOdds, rightOdds , flag, startTime, confirmations, owner);
-    bets[category].push(bet);
-    gameIds[category].push(gameId);
-    LogCreateBet(msg.sender, bet, category, startTime);
+    if (spread == 0) {
+      LogCreateBet(startTime, 0, category, msg.value, bet, gameId);
+    } else {
+      LogCreateBet(startTime, 1, category, msg.value, bet, gameId);
+    }
   }
-
-  /**
-   * @dev fetch bets use category
-   * @param category Indicate the sports events type
-   */
-  function getBetsByCategory(bytes32 category) view public returns (Bet[]) {
-    return bets[category];
-  }
-
-  function getGameIdsByCategory(bytes32 category) view public returns (bytes32 []) {
-    return gameIds[category];
-  }
-
 }
 
