@@ -8,12 +8,12 @@ import './utils/DataCenterBridge.sol';
 contract Bet is Ownable, DataCenterBridge {
   using SafeMath for uint;
 
-  event LogDistributeReward(address addr, uint reward, uint index);
+  event LogDistributeReward(address indexed addr, uint reward, uint index);
   event LogGameResult(bytes32 indexed category, bytes32 indexed gameId, uint leftPts, uint rightPts);
-  event LogParticipant(address addr, uint choice, uint betAmount);
-  event LogRefund(address addr, uint betAmount);
+  event LogParticipant(address indexed addr, uint choice, uint betAmount);
+  event LogRefund(address indexed addr, uint betAmount);
   event LogBetClosed(bool isRefund, uint timestamp);
-  event LogDealerWithdraw(address addr, uint withdrawAmount);
+  event LogDealerWithdraw(address indexed addr, uint withdrawAmount);
 
   /** 
    * @desc
