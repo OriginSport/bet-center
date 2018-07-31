@@ -23,6 +23,7 @@
     "truffle-js-test-helper": "^1.0.1"
   },
   "dependencies": {
+    "openzeppelin-solidity": "^1.11.0",
     "zeppelin-solidity": "1.8.0"
   }
 }
