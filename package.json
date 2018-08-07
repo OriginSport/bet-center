@@ -20,10 +20,11 @@
   },
   "homepage": "https://github.com/OriginSport/bet-center#readme",
   "devDependencies": {
-    "truffle-js-test-helper": "^1.0.1"
+    "truffle-js-test-helper": "^1.0.4"
   },
   "dependencies": {
     "openzeppelin-solidity": "^1.11.0",
+    "web3": "^0.20.6",
     "zeppelin-solidity": "1.8.0"
   }
 }

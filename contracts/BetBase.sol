@@ -12,7 +12,6 @@ contract BetBase is Ownable {
     using SafeMath for uint;
 
     event LogDistributeReward(address indexed addr, uint reward, uint index);
-//    event LogGameResult(bytes32 indexed category, bytes32 indexed gameId, uint leftPts, uint rightPts);
     event LogGameResult(bytes32 indexed category, uint leftPts, uint rightPts);
     event LogParticipant(address indexed addr, uint choice, uint betAmount);
     event LogRefund(address indexed addr, uint betAmount);
@@ -21,34 +20,15 @@ contract BetBase is Ownable {
 
     /**
      * @desc
-     * gameId: is a fixed string just like "0021701030"
-     *   the full gameId encode(include football, basketball, esports..) will publish on github
-     * leftOdds: need divide 100, if odds is 216 means 2.16
-     * middleOdds: need divide 100, if odds is 175 means 1.75
-     * rightOdds: need divide 100, if odds is 250 means 2.50
+     * odds: need divide 100, if odds[1] is 216 means 2.16
      * spread: need sub 0.5, if spread is 1 means 0.5, 0 means no spread
      * flag: indicate which team get spread, 1 means leftTeam, 3 means rightTeam
      */
-//    struct BetInfo {
-//        bytes32 category;
-//        bytes32 gameId;
-//        uint8 spread;
-//        uint8 flag;
-//        uint16 leftOdds;
-//        uint16 middleOdds;
-//        uint16 rightOdds;
-//        uint minimumBet;
-//        uint startTime;
-//        uint deposit;
-//        address dealer;
-//    }
-
     bytes32 public category;
-//    bytes32 public gameId;
     uint8 public spread;
     uint8 public flag;
     /** odds[1]:leftOdds, odds[2]:middleOdds, odds[3]:rightOdds */
-    mapping(uint8 => uint16) odds;
+    mapping(uint => uint16) public odds;
     uint public minimumBet;
     uint public startTime;
     uint public deposit;
@@ -69,14 +49,8 @@ contract BetBase is Ownable {
     uint16 public rightPts;
     bool public isBetClosed = false;
 
-//    uint public totalBetAmount = 0;
-//    uint public leftAmount;
-//    uint public middleAmount;
-//    uint public rightAmount;
-//    uint public numberOfBet;
     /** amounts[0]:totalAmount, amounts[1]:leftAmount, amounts[2]:middleAmount, amounts[3]:rightAmount */
     mapping(uint => uint) public amounts;
-
     address[] public players;
     mapping(address => Player) public playerInfo;
 
@@ -90,13 +64,11 @@ contract BetBase is Ownable {
 
     function() payable public {}
 
-//    BetInfo betInfo;
-
-    constructor(address _dealer, bytes32 _category, uint _minimumBet, uint8 _spread, uint16 _leftOdds, uint16 _middleOdds, uint16 _rightOdds,
-        uint8 _flag, uint _startTime, address _owner) payable public {
+    constructor(address _dealer, bytes32 _category, uint8 _spread, uint8 _flag, uint16 _leftOdds, uint16 _middleOdds, uint16 _rightOdds,
+        uint _minimumBet, uint _startTime, address _owner) payable public {
         require(_flag == 1 || _flag == 3);
         require(_startTime > now);
-        require(msg.value >= minimumBet.mul(_leftOdds) && msg.value >= minimumBet.mul(_middleOdds) && msg.value >= minimumBet.mul(_rightOdds));
+        require(msg.value >= _minimumBet.mul(_leftOdds).div(100) && msg.value >= _minimumBet.mul(_middleOdds).div(100) && msg.value >= _minimumBet.mul(_rightOdds).div(100));
 
         dealer = _dealer;
         deposit = msg.value;
@@ -147,14 +119,6 @@ contract BetBase is Ownable {
     }
 
     /**
-     * @dev calculate the gas whichdistribute rewards will cost
-     * set default gasPrice is 5000000000
-     */
-//    function getRefundTxFee() public view returns (uint) {
-//        return numberOfBet.mul(5000000000 * 21000);
-//    }
-
-    /**
      * @dev find a player has participanted or not
      * @param player the address of the participant
      */
@@ -170,38 +134,13 @@ contract BetBase is Ownable {
      * @param choice indicate which team user choose
      * @param amount indicate how many ether user bet
      */
-    function isSolvent(uint8 choice, uint amount) internal view returns (bool) {
+    function isSolvent(uint choice, uint amount) internal view returns (bool) {
         uint needAmount;
-//        if (choice == 1) {
-//            needAmount = (leftAmount.add(amount)).mul(leftOdds).div(100);
-//        } else if (choice == 2) {
-//            needAmount = (middleAmount.add(amount)).mul(middleOdds).div(100);
-//        } else {
-//            needAmount = (rightAmount.add(amount)).mul(rightOdds).div(100);
-//        }
-        needAmount = amounts[choice] = (amounts[choice].add(amount)).mul(odds[choice]).div(100);
-        
-//        if (needAmount.add(getRefundTxFee()) > amounts[0].add(amount).add(deposit)) {
+        needAmount = (amounts[choice].add(amount)).mul(odds[choice]).div(100);
         if (needAmount > amounts[0].add(amount).add(deposit)) {
             return false;
         }
         return true;
-    }
-
-    /**
-     * @dev update this bet some state
-     * @param choice indicate which team user choose
-     * @param amount indicate how many ether user bet
-     */
-    function updateAmountOfEachChoice(uint choice, uint amount) internal {
-//        if (choice == 1) {
-//            leftAmount = leftAmount.add(amount);
-//        } else if (choice == 2) {
-//            middleAmount = middleAmount.add(amount);
-//        } else {
-//            rightAmount = rightAmount.add(amount);
-//        }
-        amounts[choice] = amounts[choice].add(amount);
     }
 
     /**
@@ -221,8 +160,6 @@ contract BetBase is Ownable {
         playerInfo[msg.sender].choice = choice;
         playerInfo[msg.sender].betAmount = msg.value;
         amounts[0] = amounts[0].add(msg.value);
-//        numberOfBet = numberOfBet.add(1);
-//        updateAmountOfEachChoice(choice, msg.value);
         amounts[choice] = amounts[choice].add(msg.value);
         players.push(msg.sender);
 
@@ -277,19 +214,11 @@ contract BetBase is Ownable {
     function manualCloseBet(uint16 _leftPts, uint16 _rightPts) onlyOwner external {
         require(now > startTime);
         require(!isBetClosed);
+
         leftPts = _leftPts;
         rightPts = _rightPts;
         winChoice = getWinChoice(leftPts, rightPts);
-
-//        if (winChoice == 1) {
-//            distributeReward(leftOdds);
-//        } else if (winChoice == 2) {
-//            distributeReward(middleOdds);
-//        } else {
-//            distributeReward(rightOdds);
-//        }
         distributeReward(odds[winChoice]);
-
         isBetClosed = true;
         withdraw();
 
@@ -305,17 +234,10 @@ contract BetBase is Ownable {
         require(!isBetClosed);
 
         winChoice = _winChoice;
-//        if (winChoice == 1) {
-//            distributeReward(leftOdds);
-//        } else if (winChoice == 2) {
-//            distributeReward(middleOdds);
-//        } else {
-//            distributeReward(rightOdds);
-//        }
         distributeReward(odds[_winChoice]);
-
         isBetClosed = true;
         withdraw();
+
         emit LogBetClosed(false, now);
         emit LogGameResult(category, leftPts, rightPts);
     }
